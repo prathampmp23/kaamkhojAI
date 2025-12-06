@@ -103,7 +103,7 @@ main {
 
 /* Quick Actions Section */
 .quick-actions {
-  padding: 50px 0;
+  padding: 50px 10px;
 }
 
 .quick-actions .container {
@@ -325,7 +325,7 @@ main {
   }
 
   .quick-actions {
-    padding: 40px 0;
+    padding: 40px 20px;
   }
 
   .features-section {

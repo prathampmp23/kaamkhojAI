@@ -42,7 +42,7 @@
 }
 
 .search-input {
-  width: 100%;
+  width: 90%;
   padding: 12px 15px 12px 45px;
   border: 1px solid #ddd;
   border-radius: 10px;
@@ -175,7 +175,7 @@
 }
 
 .job-card:hover {
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
+  /* box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12); */
   transform: translateY(-3px);
 }
 
@@ -323,7 +323,7 @@
 }
 
 .modal-container::-webkit-scrollbar {
-  width: 10px;       
+  width: 10px;
 }
 
 .modal-container::-webkit-scrollbar-thumb {
@@ -334,7 +334,6 @@
 .modal-container::-webkit-scrollbar-track {
   background: transparent;
 }
-
 
 .modal-header {
   padding: 1.5rem;
@@ -500,6 +499,15 @@
 
   .search-container {
     max-width: none;
+  }
+
+  .search-input {
+    width: 83%;
+  }
+
+  .categories-container {
+    justify-content: center;
+    align-items: center;
   }
 
   .jobs-grid {
