@@ -1,0 +1,83 @@
+{
+    "brand": "KaamKhojAI",
+    "home": "Home",
+    "jobs": "Jobs",
+    "assistant": "AI Assistant",
+    "profile": "Profile",
+    "user": "User",
+    "dashboard": "Dashboard",
+    "logout": "Logout",
+    "login": "Login",
+    "signup": "Sign Up",
+    "language": "Language",
+    "welcomeMessage": "I will help you find a job in English, Hindi, or Marathi.",
+    "prompt": "First, please tell me your name. Click the mic and speak your name.",
+    "listening": "I'm listening...",
+    "clickToTalk": "Click the mic to talk",
+    "profileCreatedRedirecting": "Profile created! Redirecting...",
+    "jobRecommendationIntro": "Here are some jobs for you. ",
+    "jobDetails": "{{title}} in {{company}} with salary {{salary}}. ",
+    "connectionError": "I'm having trouble connecting to my brain right now. Please try again later.",
+    "profileError": "Something went wrong while saving your profile or finding jobs.",
+    "speechRecognitionNotSupported": "Speech recognition not supported in this browser.",
+    "profileCreatedAlert": "Profile created and jobs recommended! (Check console for details)",
+    "brandName": "KaamKhoj",
+    "brandTagline": "A New Path to Employment",
+    "quickActions": {
+        "title": "Quick Links",
+        "findJob": {
+            "title": "Find Jobs",
+            "description": "View available jobs in your area",
+            "button": "View"
+        },
+        "voiceForm": {
+            "title": "Voice Form",
+            "description": "Submit your details by speaking",
+            "button": "Start Now"
+        },
+        "contact": {
+            "title": "Contact Us",
+            "description": "Talk to us for help",
+            "button": "Call"
+        }
+    },
+    "features": {
+        "title": "Benefits of KaamKhoj",
+        "list": [
+            {
+                "title": "Hindi & English Support",
+                "description": "Communicate and find jobs in your language"
+            },
+            {
+                "title": "Voice-Based Forms",
+                "description": "No typing needed - just speak"
+            },
+            {
+                "title": "Nearby Jobs",
+                "description": "Find available jobs in your area"
+            },
+            {
+                "title": "Secure Platform",
+                "description": "Connect with trusted employers"
+            }
+        ]
+    },
+    "jobListings": "Job Opportunities",
+    "hero": {
+        "title": "Find Your Perfect Job",
+        "subtitle": "Fill forms using voice and reach your new job",
+        "popularSearches": "Popular jobs",
+        "popularTags": [
+            "Driver",
+            "Cook",
+            "Cleaner",
+            "Gardener",
+            "Plumber",
+            "Electrician"
+        ]
+    },
+    "footer": {
+        "rights": "All Rights Reserved",
+        "companyName": "KaamKhoj"
+    }
+}
