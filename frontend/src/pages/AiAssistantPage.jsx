@@ -5,6 +5,7 @@ import "./AiAssistantPage.css";
 import { X, Mic } from "lucide-react";
 import NavigationBar from "../components/NavigationBar";
 import axios from "axios";
+import server from "../environment";
 
 const flowOrder = [
   "name",
@@ -171,6 +172,7 @@ const isLikelyName = (text) => {
 
 const AiAssistantPage = () => {
   const navigate = useNavigate();
+  const server_url = `${server}`;
 
   const { t, i18n } = useTranslation();
   const [isListening, setIsListening] = useState(false);
@@ -344,7 +346,7 @@ const AiAssistantPage = () => {
     const lang = i18n.language;
 
     try {
-      const res = await axios.post("http://localhost:5000/api/voice/process", {
+      const res = await axios.post(`${server_url}/api/voice/process`, {
         text,
         fieldType: field,
       });
@@ -392,7 +394,7 @@ const AiAssistantPage = () => {
             console.log("Submitting finalData:", finalData);
 
             const profileRes = await axios.post(
-              "http://localhost:5000/api/auth/create-profile",
+              `${server_url}/api/auth/create-profile`,
               finalData
             );
 

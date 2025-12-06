@@ -2,23 +2,42 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const path = require("path");
 const connectDB = require("./Config/db");
 const authRoutes = require("./routes/authRoutes");
 const jobRoutes = require("./routes/jobRoutes");
-const mongoose = require("mongoose");
+const geminiRoutes = require("./routes/geminiRoutes");
+const voiceRoutes = require("./routes/voiceRoutes");
 
-// --- Service Initialization ---
-
-// --- Basic Setup ---
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// --- Database Connection ---
+// --- Connect to MongoDB ---
 connectDB();
 
-// --- Middleware ---
-app.use(cors());
+// allowed frontend URLs
+const allowedOrigins = [
+  "http://localhost:5173",            // Vite dev
+  "https://kaamkhojai.onrender.com",  // Production frontend 
+];
+
+// CORS middleware
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // For non-browser clients (like curl, Postman) origin can be undefined
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.log("Blocked by CORS:", origin);
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -26,12 +45,8 @@ app.use(express.urlencoded({ extended: true }));
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
 });
-
-
-const geminiRoutes = require("./routes/geminiRoutes");
-const voiceRoutes = require("./routes/voiceRoutes");
 
 // --- API Routes ---
 app.use("/api/auth", authRoutes);
@@ -39,15 +54,12 @@ app.use("/api/gemini", geminiRoutes);
 app.use("/api/voice", voiceRoutes);
 app.use("/api/jobs", jobRoutes);
 
-// --- Static File Serving for Production ---
-app.use(express.static(path.join(__dirname, "../frontend/dist")));
-
-// --- Catch-All Route ---
+// --- Health check route (optional but useful on Render) ---
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../frontend/dist", "index.html"));
+  res.json({ ok: true, message: "Backend is running.." });
 });
 
-// --- Server Initialization ---
+// --- Start Server ---
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
