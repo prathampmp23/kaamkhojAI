@@ -25,8 +25,8 @@ const LandingPage = () => {
       {isLoading ? (
         <div className="loader-container">
           <div className="loader"></div>
-          <h2 className="brand-name">{t("brandName")}</h2>
-          <p className="brand-tagline">{t("brandTagline")}</p>
+          <h2 className="brand-name">KaamKhoojAI</h2>
+          <p className="brand-tagline">A New Path to Employment</p>
         </div>
       ) : (
         <>
@@ -37,40 +37,38 @@ const LandingPage = () => {
 
             <section className="features-section">
               <div className="container">
-                <h2 className="section-title">
-                  {t("features.title")}
-                </h2>
+                <h2 className="section-title">{t("features.title")}</h2>
                 <div className="features-grid">
-                  {t("features.list", { returnObjects: true }).map((feature, index) => (
-                    <div className="feature" key={index}>
-                      <div className="feature-icon">
-                        <i
-                          className={`fas fa-${
-                            [
-                              "language",
-                              "volume-up",
-                              "map-marker-alt",
-                              "user-shield",
-                            ][index]
-                          }`}
-                        ></i>
+                  {t("features.list", { returnObjects: true }).map(
+                    (feature, index) => (
+                      <div className="feature" key={index}>
+                        <div className="feature-icon">
+                          <i
+                            className={`fas fa-${
+                              [
+                                "language",
+                                "volume-up",
+                                "map-marker-alt",
+                                "user-shield",
+                              ][index]
+                            }`}
+                          ></i>
+                        </div>
+                        <div className="">
+                          <h3>{feature.title}</h3>
+                        </div>
+                        <div className="">
+                          <p>{feature.description}</p>
+                        </div>
                       </div>
-                      <div className="">
-                        <h3>{feature.title}</h3>
-                      </div>
-                      <div className="">
-                        <p>{feature.description}</p>
-                      </div>
-                    </div>
-                  ))}
+                    ),
+                  )}
                 </div>
               </div>
             </section>
 
             <section className="quick-actions">
-              <h2 className="quick-action-title">
-                {t("quickActions.title")}
-              </h2>
+              <h2 className="quick-action-title">{t("quickActions.title")}</h2>
               <div className="container">
                 <div className="action-card ">
                   <div className="action-icon">
@@ -109,10 +107,7 @@ const LandingPage = () => {
 
             <AiAssistant />
 
-            <JobListings
-              title={t("jobListings")}
-              showCount={4}
-            />
+            <JobListings title={t("jobListings")} showCount={4} />
           </main>
 
           <Footer />

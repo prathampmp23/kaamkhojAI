@@ -16,7 +16,7 @@ const Footer = () => {
         </div>
         <div>
           <p>
-            <b>Co-Founders </b>
+            <b>{t("footer.coFounders")} </b>
           </p>
           <p className="text-primary">
             Manthan, Pratham, Rishabh, Yachin, Aashish

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import NavigationBar from '../components/NavigationBar';
@@ -8,7 +9,8 @@ import './DashboardPage.css';
 const DashboardPage = () => {
   const { currentUser, isAuthenticated } = useAuthContext();
   const [loading, setLoading] = useState(true);
-  const [language, setLanguage] = useState('en');
+  const { i18n } = useTranslation();
+  const [language, setLanguage] = useState(i18n.language || 'en');
   const [profile, setProfile] = useState(null);
   const [recommendedJobs, setRecommendedJobs] = useState([]);
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -62,6 +64,29 @@ const DashboardPage = () => {
       aiAssistanceRequired: 'Use AI Assistant to create your profile',
       completeProfileWithAI: 'Complete Profile with AI Assistant',
       createProfileForJobs: 'Create your profile with our AI Assistant to get personalized job recommendations',
+    },
+    mr: {
+      title: 'डॅशबोर्ड',
+      loading: 'लोड होत आहे...',
+      welcome: 'स्वागत आहे',
+      recentActivity: 'अलीकडील क्रियाकलाप',
+      noActivity: 'अलीकडील क्रियाकलाप नाहीत',
+      jobApplications: 'नोकरी अर्ज',
+      savedJobs: 'जतन केलेल्या नोकऱ्या',
+      profile: 'प्रोफाइल',
+      viewProfile: 'प्रोफाइल पहा',
+      editProfile: 'प्रोफाइल संपादित करा',
+      name: 'नाव',
+      skills: 'कौशल्ये',
+      recommendedJobs: 'शिफारस केलेल्या नोकऱ्या',
+      viewAllJobs: 'सर्व नोकऱ्या पहा',
+      completeProfile: 'प्रोफाइल पूर्ण करा',
+      profileIncomplete: 'आपले प्रोफाइल अजून पूर्ण नाही',
+      browseJobs: 'नोकऱ्या ब्राउझ करा',
+      viewDetails: 'तपशील पहा',
+      aiAssistanceRequired: 'आपले प्रोफाइल तयार करण्यासाठी AI सहाय्यक वापरा',
+      completeProfileWithAI: 'AI सहाय्यकाशी प्रोफाइल पूर्ण करा',
+      createProfileForJobs: 'वैयक्तिक नोकरी शिफारसींसाठी आमच्या AI सहाय्यकाशी आपले प्रोफाइल तयार करा',
     }
   };
 
@@ -70,6 +95,7 @@ const DashboardPage = () => {
     const savedLanguage = localStorage.getItem('preferredLanguage');
     if (savedLanguage) {
       setLanguage(savedLanguage);
+      i18n.changeLanguage(savedLanguage);
     }
 
     // If not authenticated, redirect to login
@@ -79,7 +105,12 @@ const DashboardPage = () => {
     }
 
     setLoading(false);
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, i18n]);
+
+  // keep local language in sync with i18n changes triggered elsewhere (e.g., navbar)
+  useEffect(() => {
+    setLanguage(i18n.language || 'en');
+  }, [i18n.language]);
   
   // Fetch profile data
   useEffect(() => {
@@ -154,15 +185,35 @@ const DashboardPage = () => {
                   setRecommendedJobs([
                     {
                       id: '1',
-                      title: language === 'hi' ? 'ड्राइवर की नौकरी' : 'Driver Job',
-                      description: language === 'hi' ? 'ऑफिस के लिए ड्राइवर की आवश्यकता है' : 'Driver needed for office commute',
+                      title:
+                        language === 'hi'
+                          ? 'ड्राइवर की नौकरी'
+                          : language === 'mr'
+                          ? 'ड्रायव्हरची नोकरी'
+                          : 'Driver Job',
+                      description:
+                        language === 'hi'
+                          ? 'ऑफिस के लिए ड्राइवर की आवश्यकता है'
+                          : language === 'mr'
+                          ? 'ऑफिससाठी ड्रायव्हर आवश्यक आहे'
+                          : 'Driver needed for office commute',
                       location: 'Mumbai',
                       salary: '₹15,000 - ₹20,000',
                     },
                     {
                       id: '2',
-                      title: language === 'hi' ? 'रसोइया की नौकरी' : 'Cook Job',
-                      description: language === 'hi' ? 'रेस्टोरेंट के लिए रसोइया चाहिए' : 'Cook needed for restaurant',
+                      title:
+                        language === 'hi'
+                          ? 'रसोइया की नौकरी'
+                          : language === 'mr'
+                          ? 'स्वयंपाकीची नोकरी'
+                          : 'Cook Job',
+                      description:
+                        language === 'hi'
+                          ? 'रेस्टोरेंट के लिए रसोइया चाहिए'
+                          : language === 'mr'
+                          ? 'रेस्टॉरंटसाठी स्वयंपाकी हवा आहे'
+                          : 'Cook needed for restaurant',
                       location: 'Delhi',
                       salary: '₹18,000 - ₹25,000',
                     }
@@ -194,7 +245,10 @@ const DashboardPage = () => {
 
   const handleLanguageChange = (lang) => {
     setLanguage(lang);
-    localStorage.setItem('preferredLanguage', lang);
+    try {
+      localStorage.setItem('preferredLanguage', lang);
+    } catch {}
+    i18n.changeLanguage(lang);
   };
 
   if (loading) {

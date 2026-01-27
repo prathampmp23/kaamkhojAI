@@ -149,7 +149,7 @@ const isLikelyName = (text) => {
   if (words.length < 1 || words.length > 3) return false;
   if (
     !words.every((w) =>
-      /^[A-Za-z\u0900-\u097F\u0995-\u09FF\u0A80-\u0AFF\-']+$/.test(w)
+      /^[A-Za-z\u0900-\u097F\u0995-\u09FF\u0A80-\u0AFF\-']+$/.test(w),
     )
   )
     return false;
@@ -200,6 +200,23 @@ const AiAssistantPage = () => {
   const recognitionRef = useRef(null);
   const [userName] = useState("User");
   const processingLockRef = useRef(false);
+  const [voicesLoaded, setVoicesLoaded] = useState(false);
+
+  // Ensure browser voices are loaded before speaking
+  useEffect(() => {
+    if (!window.speechSynthesis) return;
+    const handleVoicesChanged = () => {
+      // Some browsers require this event before voices become available
+      const list = window.speechSynthesis.getVoices();
+      setVoicesLoaded(Array.isArray(list) && list.length > 0);
+    };
+    // Trigger once in case voices are already available
+    handleVoicesChanged();
+    window.speechSynthesis.onvoiceschanged = handleVoicesChanged;
+    return () => {
+      window.speechSynthesis.onvoiceschanged = null;
+    };
+  }, []);
 
   //   useEffect(() => {
   //     // This runs when AiAssistantPage is mounted
@@ -242,21 +259,35 @@ const AiAssistantPage = () => {
     // if (!isActiveRef.current) return; // don't speak if page is no longer active
 
     const utterance = new SpeechSynthesisUtterance(text);
-    const locale =
-      lang === "en"
-        ? "en-IN"
-        : lang === "hi"
-        ? "hi-IN"
-        : lang === "mr"
-        ? "mr-IN"
-        : lang;
-    utterance.lang = locale;
-
+    const requested =
+      lang === "en" ? "en-IN" : lang === "hi" ? "hi-IN" : lang === "mr" ? "mr-IN" : lang;
+    
+    // Choose best available voice with sensible fallbacks
     const voices = window.speechSynthesis.getVoices();
-    const match = voices.find(
-      (v) => v.lang && v.lang.toLowerCase().startsWith(locale.toLowerCase())
-    );
-    if (match) utterance.voice = match;
+    const lower = (s) => (s || "").toLowerCase();
+    const findExact = voices.find((v) => lower(v.lang) === lower(requested));
+    const base = lower(requested).split("-")[0];
+    const findBase = voices.find((v) => lower(v.lang).startsWith(base));
+    const findHindi = voices.find((v) => lower(v.lang).startsWith("hi"));
+    const findEnIn = voices.find((v) => lower(v.lang).startsWith("en-in"));
+    const findEn = voices.find((v) => lower(v.lang).startsWith("en"));
+
+    let chosen = findExact || findBase;
+    // Marathi often lacks direct voices; fall back to Hindi (Devanagari) then English
+    if (!chosen && base === "mr") {
+      chosen = findHindi || findEnIn || findEn;
+    }
+    if (!chosen) {
+      chosen = findEnIn || findEn || null;
+    }
+
+    if (chosen) {
+      utterance.voice = chosen;
+      utterance.lang = chosen.lang || requested;
+    } else {
+      // As a last resort, set a readable locale
+      utterance.lang = requested === "mr-IN" ? "hi-IN" : requested;
+    }
     if (onend) utterance.onend = onend;
 
     const wrappedOnEnd = () => {
@@ -276,7 +307,7 @@ const AiAssistantPage = () => {
   const goToNextField = () => {
     const nextIndex = Math.min(
       currentFieldIndexRef.current + 1,
-      flowOrder.length - 1
+      flowOrder.length - 1,
     );
     currentFieldIndexRef.current = nextIndex;
     setCurrentFieldIndex(nextIndex);
@@ -306,8 +337,8 @@ const AiAssistantPage = () => {
         i18n.language === "en"
           ? "en-US"
           : i18n.language === "hi"
-          ? "hi-IN"
-          : "mr-IN";
+            ? "hi-IN"
+            : "mr-IN";
 
       recognition.onstart = () => setIsListening(true);
       recognition.onend = () => {
@@ -395,7 +426,7 @@ const AiAssistantPage = () => {
 
             const profileRes = await axios.post(
               `${server_url}/api/auth/create-profile`,
-              finalData
+              finalData,
             );
 
             const {
@@ -417,7 +448,7 @@ const AiAssistantPage = () => {
                 experience: createdProfile.experience,
                 job_title: createdProfile.job_title,
                 salary_expectation: createdProfile.salary_expectation,
-              })
+              }),
             );
 
             let jobRecommendationSpeech = "";
@@ -576,16 +607,16 @@ const AiAssistantPage = () => {
             {isListening
               ? t("listening")
               : lastAiMessage
-              ? lastAiMessage.text
-              : t("clickToTalk")}
+                ? lastAiMessage.text
+                : t("clickToTalk")}
           </div>
 
           <div className="prompt-text">
             {isListening
               ? transcript
               : lastAiMessage
-              ? lastAiMessage.prompt
-              : ""}
+                ? lastAiMessage.prompt
+                : ""}
           </div>
 
           <div className="controls">
@@ -596,31 +627,98 @@ const AiAssistantPage = () => {
               <Mic />
             </button>
           </div>
+          {/* *** Capture Fields info *** */}
+          {/* <div className="side-section">
+            {formData.name && (
+              <h3 className="side-title">
+                {t("ui.capturedDetailsTitle", {
+                  defaultValue: "Captured Details",
+                })}
+              </h3>
+            )}
+            <div className="captured-summary">
+              {formData.name && (
+                <div className="summary-row">
+                  <span className="summary-label">
+                    {t("assistantPage.labels.name")}:
+                  </span>
+                  <span className="summary-value">{formData.name}</span>
+                </div>
+              )}
+              {formData.age && (
+                <div className="summary-row">
+                  <span className="summary-label">
+                    {t("assistantPage.labels.age")}:
+                  </span>
+                  <span className="summary-value">{formData.age}</span>
+                </div>
+              )}
+              {formData.address && (
+                <div className="summary-row">
+                  <span className="summary-label">
+                    {t("assistantPage.labels.address")}:
+                  </span>
+                  <span className="summary-value">{formData.address}</span>
+                </div>
+              )}
+              {formData.phone && (
+                <div className="summary-row">
+                  <span className="summary-label">
+                    {t("assistantPage.labels.phone")}:
+                  </span>
+                  <span className="summary-value">{formData.phone}</span>
+                </div>
+              )}
+              {formData.shift_time && (
+                <div className="summary-row">
+                  <span className="summary-label">
+                    {t("assistantPage.labels.shift")}:
+                  </span>
+                  <span className="summary-value">{formData.shift_time}</span>
+                </div>
+              )}
+              {formData.experience && (
+                <div className="summary-row">
+                  <span className="summary-label">
+                    {t("assistantPage.labels.experience")}:
+                  </span>
+                  <span className="summary-value">{formData.experience}</span>
+                </div>
+              )}
+              {formData.job_title && (
+                <div className="summary-row">
+                  <span className="summary-label">
+                    {t("assistantPage.labels.jobType")}:
+                  </span>
+                  <span className="summary-value">{formData.job_title}</span>
+                </div>
+              )}
+              {formData.salary_expectation && (
+                <div className="summary-row">
+                  <span className="summary-label">
+                    {t("assistantPage.labels.salary")}:
+                  </span>
+                  <span className="summary-value">
+                    {formData.salary_expectation}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div> */}
+        </div>
 
-          <div className="captured-fields" style={{ marginTop: 12 }}>
-            <div>
-              <strong>Name:</strong> {formData.name || "-"}
-            </div>
-            <div>
-              <strong>Age:</strong> {formData.age || "-"}
-            </div>
-            <div>
-              <strong>Address:</strong> {formData.address || "-"}
-            </div>
-            <div>
-              <strong>Phone:</strong> {formData.phone || "-"}
-            </div>
-            <div>
-              <strong>Shift:</strong> {formData.shift_time || "-"}
-            </div>
-            <div>
-              <strong>Experience:</strong> {formData.experience || "-"}
-            </div>
-            <div>
-              <strong>Job Type:</strong> {formData.job_title || "-"}
-            </div>
-            <div>
-              <strong>Salary:</strong> {formData.salary_expectation || "-"}
+        {/* Conversation + Captured summary panel */}
+        <div className="ai-side-panel">
+          <div className="side-section">
+            <h3 className="side-title">
+              {t("ui.conversationTitle", { defaultValue: "Conversation" })}
+            </h3>
+            <div className="conversation-list">
+              {messages.map((m, idx) => (
+                <div key={idx} className={`conv-item ${m.sender}`}>
+                  <div className="conv-bubble">{m.text}</div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

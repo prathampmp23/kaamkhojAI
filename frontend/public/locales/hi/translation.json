@@ -1,7 +1,7 @@
 {
     "brand": "कामखोज",
     "home": "होम",
-    "jobs": "नौकरियां",
+    "jobsLabel": "नौकरियां",
     "assistant": "AI सहायक",
     "profile": "प्रोफाइल",
     "user": "उपयोगकर्ता",
@@ -63,6 +63,18 @@
         ]
     },
     "jobListings": "नौकरी के अवसर",
+    "aiPreview": {
+        "title": "हमारा AI आपकी मदद करेगा",
+        "description": "टाइपिंग की चिंता न करें। बस बोलिए, और हमारा AI सहायक आपका प्रोफ़ाइल भर देगा। यह तेज़, आसान है, और आपको अपनी अगली नौकरी के करीब लाता है।",
+        "button": "AI सहायक के साथ शुरू करें",
+        "assistantName": "कामखोज सहायक",
+        "greeting": "नमस्ते! मैं आपका AI सहायक हूँ। मैं आपकी प्रोफ़ाइल बनाने में मदद करूँगा।",
+        "askName": "कृपया अपना नाम बताएं।",
+        "userNameExample": "मेरा नाम रमेश कुमार है",
+        "askMobile": "धन्यवाद, रमेश! अब कृपया अपना मोबाइल नंबर बताएं।",
+        "micPlaceholder": "बोलने के लिए माइक पर टैप करें...",
+        "avatarLabel": "AI"
+    },
     "hero": {
         "title": "अपनी सही नौकरी खोजें",
         "subtitle": "आवाज से फॉर्म भरें और अपनी नई नौकरी तक पहुंचें",
@@ -76,8 +88,85 @@
             "इलेक्ट्रीशियन"
         ]
     },
+    "ui": {
+        "conversationTitle": "वार्तालाप",
+        "capturedDetailsTitle": "सहेजे गए विवरण"
+    },
     "footer": {
         "rights": "सर्वाधिकार सुरक्षित",
-        "companyName": "कामखोज"
+        "companyName": "कामखोज",
+        "coFounders": "सह-संस्थापक"
+    },
+    "jobList": {
+        "applyNow": "अभी आवेदन करें",
+        "viewAll": "सभी नौकरियां देखें",
+        "samples": [
+            { "id": 1, "title": "निर्माण कार्यकर्ता", "company": "बिल्डइट कॉर्प", "location": "मुंबई, भारत", "icon": "hard-hat" },
+            { "id": 2, "title": "फैक्टरी कार्यकर्ता", "company": "मेगाफैक्टरी इंक.", "location": "दिल्ली, भारत", "icon": "industry" },
+            { "id": 3, "title": "डिलीवरी ड्राइवर", "company": "क्विकशिप", "location": "बैंगलोर, भारत", "icon": "truck" },
+            { "id": 4, "title": "प्लंबर", "company": "फिक्सइट राइट", "location": "मुंबई, भारत", "icon": "wrench" },
+            { "id": 5, "title": "इलेक्ट्रीशियन", "company": "स्पार्की सर्विसेज", "location": "दिल्ली, भारत", "icon": "bolt" },
+            { "id": 6, "title": "बढ़ई", "company": "वुडवर्क्स", "location": "बैंगलोर, भारत", "icon": "hammer" }
+        ]
+    },
+    "assistantPage": {
+        "labels": {
+            "name": "नाम",
+            "age": "उम्र",
+            "address": "पता",
+            "phone": "फोन",
+            "shift": "शिफ्ट",
+            "experience": "अनुभव",
+            "jobType": "नौकरी का प्रकार",
+            "salary": "वेतन"
+        }
+    },
+    "noJobsFoundMessage": "सटीक मेल नहीं मिला। मैं आपको सभी नौकरियां दिखाऊंगा।",
+    "jobs": {
+        "pageTitle": "नौकरियां",
+        "recommendedTag": "(आपके लिए अनुशंसित)",
+        "searchPlaceholder": "नौकरियां खोजें...",
+        "addJob": "नौकरी पोस्ट करें",
+        "categoriesTitle": "श्रेणियां",
+        "all": "सभी",
+        "popular": "लोकप्रिय नौकरियां",
+        "noJobs": "कोई नौकरी उपलब्ध नहीं है",
+        "applyNow": "अभी आवेदन करें",
+        "loading": "लोड हो रहा है...",
+        "addNewJob": "नई नौकरी जोड़ें",
+        "jobTitle": "नौकरी का शीर्षक",
+        "jobDescription": "नौकरी का विवरण",
+        "location": "स्थान",
+        "salary": "वेतन",
+        "skillsRequired": "आवश्यक कौशल",
+        "experience": "अनुभव",
+        "submitJob": "नौकरी जमा करें",
+        "cancel": "रद्द करें",
+        "loginToPost": "नौकरी पोस्ट करने के लिए लॉगिन करें",
+        "onlyContractorsCanPost": "केवल ठेकेदार ही नौकरियां पोस्ट कर सकते हैं",
+        "submitSuccess": "नौकरी सफलतापूर्वक जमा की गई!",
+        "submitError": "नौकरी सबमिट करने में त्रुटि",
+        "skillsPlaceholder": "अल्पविराम से अलग करें",
+        "experiencePlaceholder": "उदाहरण: 2+ वर्ष",
+        "userTypeQuestion": "आप क्या हैं?",
+        "worker": "कर्मचारी",
+        "contractor": "ठेकेदार",
+        "workerInfo": "कर्मचारी नौकरियों के लिए आवेदन कर सकते हैं",
+        "contractorInfo": "ठेकेदार नौकरियां पोस्ट कर सकते हैं",
+        "minAge": "न्यूनतम आयु",
+        "availability": "उपलब्धता",
+        "fullTime": "पूर्णकालिक",
+        "partTime": "अंशकालिक",
+        "weekends": "सप्ताहांत",
+        "flexible": "लचीला",
+        "category": {
+            "driver": "ड्राइवर",
+            "cook": "रसोइया",
+            "cleaner": "सफाईकर्मी",
+            "gardener": "माली",
+            "plumber": "प्लंबर",
+            "electrician": "इलेक्ट्रीशियन",
+            "other": "अन्य"
+        }
     }
 }

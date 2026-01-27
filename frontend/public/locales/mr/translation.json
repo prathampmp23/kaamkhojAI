@@ -1,7 +1,7 @@
 {
     "brand": "कामखोज",
     "home": "होम",
-    "jobs": "नोकरी",
+    "jobsLabel": "नोकरी",
     "assistant": "AI सहाय्यक",
     "profile": "प्रोफाइल",
     "user": "वापरकर्ता",
@@ -63,6 +63,18 @@
         ]
     },
     "jobListings": "नोकरीच्या संधी",
+    "aiPreview": {
+        "title": "आमचा AI तुमची मदत करेल",
+        "description": "टायपिंगची काळजी करू नका. फक्त बोला, आणि आमचा AI सहाय्यक तुमची प्रोफाइल तुमच्यासाठी भरेल. हे जलद, सोपे आहे आणि तुम्हाला पुढील नोकरीच्या जवळ घेऊन जाते.",
+        "button": "AI सहाय्यकासह सुरू करा",
+        "assistantName": "कामखोज सहाय्यक",
+        "greeting": "नमस्कार! मी तुमचा AI सहाय्यक आहे. मी तुमची प्रोफाइल तयार करण्यात मदत करेन.",
+        "askName": "कृपया तुमचे नाव सांगा.",
+        "userNameExample": "माझे नाव रमेश कुमार आहे",
+        "askMobile": "धन्यवाद, रमेश! आता कृपया तुमचा मोबाइल नंबर सांगा.",
+        "micPlaceholder": "बोलण्यासाठी माइकवर टॅप करा...",
+        "avatarLabel": "AI"
+    },
     "hero": {
         "title": "तुमची योग्य नोकरी शोधा",
         "subtitle": "आवाजाने फॉर्म भरा आणि तुमच्या नवीन नोकरीपर्यंत पोहोचा",
@@ -76,8 +88,85 @@
             "इलेक्ट्रीशियन"
         ]
     },
+    "ui": {
+        "conversationTitle": "संवाद",
+        "capturedDetailsTitle": "जतन केलेले तपशील"
+    },
     "footer": {
         "rights": "सर्व हक्क राखीव",
-        "companyName": "कामखोज"
+        "companyName": "कामखोज",
+        "coFounders": "सह-संस्थापक"
+    },
+    "assistantPage": {
+        "labels": {
+            "name": "नाव",
+            "age": "वय",
+            "address": "पत्ता",
+            "phone": "फोन",
+            "shift": "शिफ्ट",
+            "experience": "अनुभव",
+            "jobType": "नोकरीचा प्रकार",
+            "salary": "पगार"
+        }
+    },
+    "noJobsFoundMessage": "जुळणाऱ्या नोकऱ्या सापडल्या नाहीत. मी तुम्हाला सर्व नोकऱ्या दाखवतो.",
+    "jobs": {
+        "pageTitle": "नोकऱ्या",
+        "recommendedTag": "(तुमच्यासाठी शिफारस केलेले)",
+        "searchPlaceholder": "नोकऱ्या शोधा...",
+        "addJob": "नोकरी पोस्ट करा",
+        "categoriesTitle": "श्रेणी",
+        "all": "सर्व",
+        "popular": "लोकप्रिय नोकऱ्या",
+        "noJobs": "कोणत्याही नोकऱ्या उपलब्ध नाहीत",
+        "applyNow": "आता अर्ज करा",
+        "loading": "लोड होत आहे...",
+        "addNewJob": "नवीन नोकरी जोडा",
+        "jobTitle": "नोकरीचे शीर्षक",
+        "jobDescription": "नोकरीचे वर्णन",
+        "location": "स्थान",
+        "salary": "पगार",
+        "skillsRequired": "आवश्यक कौशल्ये",
+        "experience": "अनुभव",
+        "submitJob": "नोकरी सबमिट करा",
+        "cancel": "रद्द करा",
+        "loginToPost": "नोकरी पोस्ट करण्यासाठी लॉगिन करा",
+        "onlyContractorsCanPost": "फक्त कॉन्ट्रॅक्टर नोकऱ्या पोस्ट करू शकतात",
+        "submitSuccess": "नोकरी यशस्वीरित्या सबमिट झाली!",
+        "submitError": "नोकरी सबमिट करताना त्रुटी",
+        "skillsPlaceholder": "स्वल्पविरामाने वेगळे करा",
+        "experiencePlaceholder": "उदा.: 2+ वर्षे",
+        "userTypeQuestion": "तुम्ही काय आहात?",
+        "worker": "कामगार",
+        "contractor": "कॉन्ट्रॅक्टर",
+        "workerInfo": "कामगार नोकऱ्यांसाठी अर्ज करू शकतात",
+        "contractorInfo": "कॉन्ट्रॅक्टर नोकऱ्या पोस्ट करू शकतात",
+        "minAge": "किमान वय",
+        "availability": "उपलब्धता",
+        "fullTime": "फुल-टाईम",
+        "partTime": "पार्ट-टाईम",
+        "weekends": "सुट्टीचे दिवस",
+        "flexible": "लवचिक",
+        "category": {
+            "driver": "ड्रायव्हर",
+            "cook": "कुक",
+            "cleaner": "क्लीनर",
+            "gardener": "माळी",
+            "plumber": "प्लंबर",
+            "electrician": "इलेक्ट्रीशियन",
+            "other": "इतर"
+        }
+    },
+    "jobList": {
+        "applyNow": "आता अर्ज करा",
+        "viewAll": "सर्व नोकऱ्या पहा",
+        "samples": [
+            { "id": 1, "title": "बांधकाम मजूर", "company": "बिल्डइट कॉर्प", "location": "मुंबई, भारत", "icon": "hard-hat" },
+            { "id": 2, "title": "कारखाना कामगार", "company": "मेगाफॅक्टरी इंक.", "location": "दिल्ली, भारत", "icon": "industry" },
+            { "id": 3, "title": "डिलिव्हरी ड्रायव्हर", "company": "क्विकशिप", "location": "बंगळुरू, भारत", "icon": "truck" },
+            { "id": 4, "title": "प्लंबर", "company": "फिक्सइट राईट", "location": "मुंबई, भारत", "icon": "wrench" },
+            { "id": 5, "title": "इलेक्ट्रीशियन", "company": "स्पार्की सर्व्हिसेस", "location": "दिल्ली, भारत", "icon": "bolt" },
+            { "id": 6, "title": "सुतार", "company": "वुडवर्क्स", "location": "बंगळुरू, भारत", "icon": "hammer" }
+        ]
     }
 }

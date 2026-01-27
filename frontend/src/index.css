@@ -9,6 +9,12 @@ body::-webkit-scrollbar {
   width: 0px;
 }
 
+/* Language-aware font switching: Devanagari for Hindi/Marathi */
+html[lang="hi"] body,
+html[lang="mr"] body {
+  font-family: 'Noto Sans Devanagari', 'Inter', sans-serif;
+}
+
 /* body::-webkit-scrollbar-thumb {
   background: #898989;
   border-radius: 10px;

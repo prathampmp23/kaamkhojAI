@@ -1,7 +1,7 @@
 {
     "brand": "KaamKhojAI",
     "home": "Home",
-    "jobs": "Jobs",
+    "jobsLabel": "Jobs",
     "assistant": "AI Assistant",
     "profile": "Profile",
     "user": "User",
@@ -21,7 +21,7 @@
     "profileError": "Something went wrong while saving your profile or finding jobs.",
     "speechRecognitionNotSupported": "Speech recognition not supported in this browser.",
     "profileCreatedAlert": "Profile created and jobs recommended! (Check console for details)",
-    "brandName": "KaamKhoj",
+    "brandName": "KaamKhojAI",
     "brandTagline": "A New Path to Employment",
     "quickActions": {
         "title": "Quick Links",
@@ -63,6 +63,18 @@
         ]
     },
     "jobListings": "Job Opportunities",
+    "aiPreview": {
+        "title": "Let Our AI Help You",
+        "description": "Don't worry about typing. Just speak, and our AI assistant will fill out your profile for you. It's fast, easy, and gets you closer to your next job.",
+        "button": "Start with AI Assistant",
+        "assistantName": "KaamKhoj Assistant",
+        "greeting": "Hello! I'm your AI assistant. I'll help you create your profile.",
+        "askName": "Please tell me your name.",
+        "userNameExample": "My name is Ramesh Kumar",
+        "askMobile": "Thank you, Ramesh! Now please tell me your mobile number.",
+        "micPlaceholder": "Tap the mic to speak...",
+        "avatarLabel": "AI"
+    },
     "hero": {
         "title": "Find Your Perfect Job",
         "subtitle": "Fill forms using voice and reach your new job",
@@ -76,8 +88,85 @@
             "Electrician"
         ]
     },
+    "ui": {
+        "conversationTitle": "Conversation",
+        "capturedDetailsTitle": "Captured Details"
+    },
     "footer": {
         "rights": "All Rights Reserved",
-        "companyName": "KaamKhoj"
+        "companyName": "KaamKhoj",
+        "coFounders": "Co-Founders"
+    },
+    "assistantPage": {
+        "labels": {
+            "name": "Name",
+            "age": "Age",
+            "address": "Address",
+            "phone": "Phone",
+            "shift": "Shift",
+            "experience": "Experience",
+            "jobType": "Job Type",
+            "salary": "Salary"
+        }
+    },
+    "noJobsFoundMessage": "No exact matches found. I'll show you all jobs.",
+    "jobs": {
+        "pageTitle": "Jobs",
+        "recommendedTag": "(Recommended for you)",
+        "searchPlaceholder": "Search jobs...",
+        "addJob": "Post a Job",
+        "categoriesTitle": "Categories",
+        "all": "All",
+        "popular": "Popular Jobs",
+        "noJobs": "No jobs available",
+        "applyNow": "Apply Now",
+        "loading": "Loading...",
+        "addNewJob": "Add New Job",
+        "jobTitle": "Job Title",
+        "jobDescription": "Job Description",
+        "location": "Location",
+        "salary": "Salary",
+        "skillsRequired": "Skills Required",
+        "experience": "Experience",
+        "submitJob": "Submit Job",
+        "cancel": "Cancel",
+        "loginToPost": "Please login to post jobs",
+        "onlyContractorsCanPost": "Only contractors can post jobs",
+        "submitSuccess": "Job submitted successfully!",
+        "submitError": "Error submitting job",
+        "skillsPlaceholder": "Separate with commas",
+        "experiencePlaceholder": "e.g., 2+ years",
+        "userTypeQuestion": "What are you?",
+        "worker": "Worker",
+        "contractor": "Contractor",
+        "workerInfo": "Workers can apply for jobs",
+        "contractorInfo": "Contractors can post jobs",
+        "minAge": "Minimum Age",
+        "availability": "Availability",
+        "fullTime": "Full-time",
+        "partTime": "Part-time",
+        "weekends": "Weekends",
+        "flexible": "Flexible",
+        "category": {
+            "driver": "Driver",
+            "cook": "Cook",
+            "cleaner": "Cleaner",
+            "gardener": "Gardener",
+            "plumber": "Plumber",
+            "electrician": "Electrician",
+            "other": "Other"
+        }
+    },
+    "jobList": {
+        "applyNow": "Apply Now",
+        "viewAll": "View All Jobs",
+        "samples": [
+            { "id": 1, "title": "Construction Worker", "company": "BuildIt Corp", "location": "Mumbai, India", "icon": "hard-hat" },
+            { "id": 2, "title": "Factory Worker", "company": "MegaFactory Inc.", "location": "Delhi, India", "icon": "industry" },
+            { "id": 3, "title": "Delivery Driver", "company": "QuickShip", "location": "Bangalore, India", "icon": "truck" },
+            { "id": 4, "title": "Plumber", "company": "FixIt Right", "location": "Mumbai, India", "icon": "wrench" },
+            { "id": 5, "title": "Electrician", "company": "Sparky Services", "location": "Delhi, India", "icon": "bolt" },
+            { "id": 6, "title": "Carpenter", "company": "WoodWorks", "location": "Bangalore, India", "icon": "hammer" }
+        ]
     }
 }

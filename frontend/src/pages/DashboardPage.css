@@ -193,10 +193,6 @@
   transition: transform 0.3s, box-shadow 0.3s;
 }
 
-.job-card:hover {
- 
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
 
 .job-card h3 {
   font-size: 1.2rem;

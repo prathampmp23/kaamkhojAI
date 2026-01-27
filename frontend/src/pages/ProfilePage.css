@@ -248,15 +248,6 @@
   pointer-events: none;
 }
 
-.job-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.12);
-  border-color: rgba(37, 99, 235, 0.4);
-}
-
-.job-card:hover::before {
-  opacity: 1;
-}
 
 .job-title {
   font-size: 1.05rem;

@@ -174,10 +174,7 @@
   flex-direction: column;
 }
 
-.job-card:hover {
-  /* box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12); */
-  transform: translateY(-3px);
-}
+
 
 .job-card-header {
   padding: 1.5rem;

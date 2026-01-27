@@ -1,5 +1,6 @@
 // src/pages/ProfilePage.jsx
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuthContext } from "../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
 import NavigationBar from "../components/NavigationBar";
@@ -12,7 +13,8 @@ const ProfilePage = () => {
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [language, setLanguage] = useState("en");
+  const { i18n } = useTranslation();
+  const [language, setLanguage] = useState(i18n.language || "en");
 
   const content = {
     hi: {
@@ -61,11 +63,37 @@ const ProfilePage = () => {
         "This profile is based on information collected via the AI assistant.",
       viewJobs: "View Jobs",
     },
+    mr: {
+      title: "प्रोफाइल",
+      loading: "लोड होत आहे...",
+      notLoggedIn: "आपण लॉगिन केलेले नाही. कृपया आधी लॉगिन करा.",
+      personalInfo: "वैयक्तिक माहिती",
+      name: "नाव",
+      email: "ईमेल",
+      age: "वय",
+      phone: "फोन नंबर",
+      address: "पत्ता",
+      shift: "आवडती शिफ्ट",
+      experienceYears: "अनुभव (वर्षे)",
+      jobTitle: "नोकरीचा प्रकार",
+      salaryExpectation: "अपेक्षित पगार (महिना)",
+      noProfileFound: "प्रोफाइल सापडले नाही",
+      loginPrompt: "लॉगिन करण्यासाठी",
+      clickHere: "इथे क्लिक करा",
+      completeProfile: "आपले प्रोफाइल पूर्ण करा",
+      updateProfile: "प्रोफाइल अपडेट करा",
+      fromAssistantNote:
+        "हे प्रोफाइल AI सहाय्याकडून गोळा केलेल्या माहितीवर आधारित आहे.",
+      viewJobs: "नोकऱ्या पहा",
+    },
   };
 
   const handleLanguageChange = (lang) => {
     setLanguage(lang);
-    localStorage.setItem("preferredLanguage", lang);
+    try {
+      localStorage.setItem("preferredLanguage", lang);
+    } catch {}
+    i18n.changeLanguage(lang);
   };
 
   // Load language + check auth + load profile from localStorage
@@ -73,6 +101,7 @@ const ProfilePage = () => {
     const savedLanguage = localStorage.getItem("preferredLanguage");
     if (savedLanguage) {
       setLanguage(savedLanguage);
+      i18n.changeLanguage(savedLanguage);
     }
 
     if (!isAuthenticated) {
@@ -95,7 +124,12 @@ const ProfilePage = () => {
     }
 
     setLoading(false);
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, i18n]);
+
+  // keep local language in sync with i18n changes triggered elsewhere (e.g., navbar)
+  useEffect(() => {
+    setLanguage(i18n.language || "en");
+  }, [i18n.language]);
 
   if (!isAuthenticated) {
     return (

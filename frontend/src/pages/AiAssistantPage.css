@@ -1,21 +1,89 @@
 .ai-assistant-page {
   display: flex;
   justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background-color: rgb(255, 255, 255);
-  color: white;
+  align-items: flex-start;
+  gap: 24px;
+  min-height: 100vh;
+  background-color: #ffffff;
+  color: #111827;
   font-family: sans-serif;
   margin-top: 100px;
+  padding: 0 16px 40px;
 }
 
 .ai-assistant-container {
   border-radius: 20px;
   padding: 40px;
   text-align: center;
-  width: 80%;
-  max-width: 500px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 6px 24px rgba(17, 24, 39, 0.08);
+  background: #fff;
 }
+
+.ai-side-panel {
+  width: 380px;
+  max-width: 40vw;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(17, 24, 39, 0.06);
+  padding: 16px;
+}
+
+.side-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 10px;
+}
+
+.conversation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.conv-item {
+  display: flex;
+}
+.conv-item.user { justify-content: flex-end; }
+.conv-item.ai { justify-content: flex-start; }
+
+.conv-bubble {
+  border-radius: 18px 18px 3px 18px;
+  padding: 10px 12px;
+  max-width: 85%;
+  box-shadow: 0 2px 6px rgba(17, 24, 39, 0.06);
+}
+.conv-item.user .conv-bubble {
+  background: #2f57ff;
+  color: #ffffff;
+}
+.conv-item.ai .conv-bubble {
+  background: #f5f7fb;
+  color: #111827;
+}
+
+.captured-summary {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.summary-label { color: #374151; font-weight: 600; }
+.summary-value { color: #111827; }
 
 .sphere {
   width: 130px;
@@ -50,8 +118,8 @@ video {
 }
 
 .voice-orb {
-  width: 100px;
-  height: 100px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
   position: relative;
   top: 15px;
@@ -152,7 +220,7 @@ video {
 }
 
 @media (max-width: 768px) {
-  .controls {
-    margin: 0 28%;
-  }
+  .ai-assistant-page { flex-direction: column; align-items: center; }
+  .ai-side-panel { width: 100%; max-width: 520px; }
+  .controls { margin: 0 7rem; }
 }

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import "./NavigationBar.css";
 import { useAuthContext } from "../context/AuthContext";
 
-const NavigationBar = () => {
+const NavigationBar = ({ onLanguageChange }) => {
   const { t, i18n } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -42,6 +42,14 @@ const NavigationBar = () => {
   // Handle language change
   const handleLanguageChange = (lang) => {
     i18n.changeLanguage(lang);
+    // persist preference so pages picking from localStorage stay in sync
+    try {
+      localStorage.setItem('preferredLanguage', lang);
+    } catch {}
+    // notify parent pages if they maintain local language state
+    if (typeof onLanguageChange === 'function') {
+      onLanguageChange(lang);
+    }
     setLangDropdownOpen(false);
   };
 
@@ -85,7 +93,7 @@ const NavigationBar = () => {
       <div className="container">
         <div className="navbar-content">
           <Link to="/" className="navbar-brand">
-            {t('brand')}
+            {t('brandName')}
           </Link>
 
           <button
@@ -107,7 +115,7 @@ const NavigationBar = () => {
               </li>
               <li>
                 <Link to="/jobs" className="nav-link">
-                  {t('jobs')}
+                  {t('jobsLabel')}
                 </Link>
               </li>
               <li>

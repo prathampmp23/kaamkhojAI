@@ -5,10 +5,11 @@ import Footer from "../components/Footer";
 import { useAuthContext } from "../context/AuthContext";
 import "./JobsPage.css";
 import axios from "axios";
+import { useTranslation } from "react-i18next";
 
 const JobsPage = () => {
   const location = useLocation();
-  const [language, setLanguage] = useState("en");
+  const { t, i18n } = useTranslation();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -18,113 +19,17 @@ const JobsPage = () => {
   const [userType, setUserType] = useState(null);
   const [isRecommended, setIsRecommended] = useState(false);
   const [showUserTypeModal, setShowUserTypeModal] = useState(false);
-
-  const content = {
-    hi: {
-      pageTitle: "नौकरियां",
-      search: "नौकरियां खोजें...",
-      addJob: "नौकरी पोस्ट करें",
-      categories: "श्रेणियां",
-      all: "सभी",
-      popular: "लोकप्रिय नौकरियां",
-      noJobs: "कोई नौकरी उपलब्ध नहीं है",
-      applyNow: "अभी आवेदन करें",
-      login: "नौकरी पोस्ट करने के लिए लॉगिन करें",
-      loading: "लोड हो रहा है...",
-      addNewJob: "नई नौकरी जोड़ें",
-      jobTitle: "नौकरी का शीर्षक",
-      jobDescription: "नौकरी का विवरण",
-      location: "स्थान",
-      salary: "वेतन",
-      category: "श्रेणी",
-      skillsRequired: "आवश्यक कौशल",
-      experience: "अनुभव",
-      submitJob: "नौकरी जमा करें",
-      cancel: "रद्द करें",
-      userTypeQuestion: "आप क्या हैं?",
-      worker: "कर्मचारी",
-      contractor: "ठेकेदार",
-      continueBtn: "जारी रखें",
-      workerInfo: "कर्मचारी नौकरियों के लिए आवेदन कर सकते हैं",
-      contractorInfo: "ठेकेदार नौकरियां पोस्ट कर सकते हैं",
-      categoryDriver: "ड्राइवर",
-      categoryCook: "रसोइया",
-      categoryCleaner: "सफाईकर्मी",
-      categoryGardener: "माली",
-      categoryPlumber: "प्लंबर",
-      categoryElectrician: "इलेक्ट्रीशियन",
-      categoryOther: "अन्य",
-      minAge: "न्यूनतम आयु",
-      availability: "उपलब्धता",
-      fullTime: "पूर्णकालिक",
-      partTime: "अंशकालिक",
-      weekends: "सप्ताहांत",
-      flexible: "लचीला",
-    },
-    en: {
-      pageTitle: "Jobs",
-      search: "Search jobs...",
-      addJob: "Post a Job",
-      categories: "Categories",
-      all: "All",
-      popular: "Popular Jobs",
-      noJobs: "No jobs available",
-      applyNow: "Apply Now",
-      login: "Login to post jobs",
-      loading: "Loading...",
-      addNewJob: "Add New Job",
-      jobTitle: "Job Title",
-      jobDescription: "Job Description",
-      location: "Location",
-      salary: "Salary",
-      category: "Category",
-      skillsRequired: "Skills Required",
-      experience: "Experience",
-      submitJob: "Submit Job",
-      cancel: "Cancel",
-      userTypeQuestion: "What are you?",
-      worker: "Worker",
-      contractor: "Contractor",
-      continueBtn: "Continue",
-      workerInfo: "Workers can apply for jobs",
-      contractorInfo: "Contractors can post jobs",
-      categoryDriver: "Driver",
-      categoryCook: "Cook",
-      categoryCleaner: "Cleaner",
-      categoryGardener: "Gardener",
-      categoryPlumber: "Plumber",
-      categoryElectrician: "Electrician",
-      categoryOther: "Other",
-      minAge: "Minimum Age",
-      availability: "Availability",
-      fullTime: "Full-time",
-      partTime: "Part-time",
-      weekends: "Weekends",
-      flexible: "Flexible",
-    },
-  };
-
   const categories = [
-    { id: "driver", nameEn: "Driver", nameHi: "ड्राइवर", icon: "car" },
-    { id: "cook", nameEn: "Cook", nameHi: "रसोइया", icon: "utensils" },
-    { id: "cleaner", nameEn: "Cleaner", nameHi: "सफाईकर्मी", icon: "broom" },
-    { id: "gardener", nameEn: "Gardener", nameHi: "माली", icon: "seedling" },
-    { id: "plumber", nameEn: "Plumber", nameHi: "प्लंबर", icon: "wrench" },
-    {
-      id: "electrician",
-      nameEn: "Electrician",
-      nameHi: "इलेक्ट्रीशियन",
-      icon: "bolt",
-    },
-    { id: "other", nameEn: "Other", nameHi: "अन्य", icon: "briefcase" },
+    { id: "driver", icon: "car" },
+    { id: "cook", icon: "utensils" },
+    { id: "cleaner", icon: "broom" },
+    { id: "gardener", icon: "seedling" },
+    { id: "plumber", icon: "wrench" },
+    { id: "electrician", icon: "bolt" },
+    { id: "other", icon: "briefcase" },
   ];
 
   useEffect(() => {
-    const savedLanguage = localStorage.getItem("preferredLanguage");
-    if (savedLanguage) {
-      setLanguage(savedLanguage);
-    }
-
     const state = location.state;
 
     if (
@@ -172,10 +77,7 @@ const JobsPage = () => {
     }
   };
 
-  const handleLanguageChange = (lang) => {
-    setLanguage(lang);
-    localStorage.setItem("preferredLanguage", lang);
-  };
+  const currentLang = (i18n.language || "en").split("-")[0];
 
   const handleSearch = (e) => setSearchTerm(e.target.value);
 
@@ -183,11 +85,7 @@ const JobsPage = () => {
 
   const handleAddJob = () => {
     if (!isAuthenticated) {
-      alert(
-        language === "en"
-          ? "Please login to post jobs"
-          : "कृपया नौकरी पोस्ट करने के लिए लॉगिन करें"
-      );
+      alert(t("jobs.loginToPost"));
       return;
     }
 
@@ -199,11 +97,7 @@ const JobsPage = () => {
     if (userType === "contractor") {
       setShowAddJobForm(true);
     } else {
-      alert(
-        language === "en"
-          ? "Only contractors can post jobs"
-          : "केवल ठेकेदार ही नौकरियां पोस्ट कर सकते हैं"
-      );
+      alert(t("jobs.onlyContractorsCanPost"));
     }
   };
 
@@ -232,20 +126,16 @@ const JobsPage = () => {
       // POST http://localhost:5000/api/jobs
       const res = await axios.post("http://localhost:5000/api/jobs", payload);
       if (res.data.success) {
-        alert(
-          language === "en"
-            ? "Job submitted successfully!"
-            : "नौकरी सफलतापूर्वक जमा की गई!"
-        );
+        alert(t("jobs.submitSuccess"));
         form.reset();
         setShowAddJobForm(false);
         fetchJobs();
       } else {
-        alert(res.data.message || "Error submitting job");
+        alert(res.data.message || t("jobs.submitError"));
       }
     } catch (err) {
       console.error("Error submitting job:", err);
-      alert("Error submitting job");
+      alert(t("jobs.submitError"));
     }
   };
 
@@ -261,18 +151,18 @@ const JobsPage = () => {
 
   // Filter jobs based on search term and category
   const filteredJobs = jobs.filter((job) => {
-    const titleText = (job.title && job.title[language]) || job.jobName || "";
+    const titleText = (job.title && (job.title[currentLang] || job.title.en)) || job.jobName || "";
     const descriptionText =
-      (job.description && job.description[language]) ||
+      (job.description && (job.description[currentLang] || job.description.en)) ||
       job.jobDescription ||
       "";
     const companyText =
       typeof job.company === "object"
-        ? job.company[language] || job.company.en || ""
+        ? job.company[currentLang] || job.company.en || ""
         : job.company || "";
     const locationText =
       typeof job.location === "object"
-        ? job.location[language] || job.location.en || ""
+        ? job.location[currentLang] || job.location.en || ""
         : job.location || "";
 
     const search = searchTerm.toLowerCase();
@@ -291,24 +181,20 @@ const JobsPage = () => {
 
   return (
     <div className="jobs-page">
-      <NavigationBar
-        language={language}
-        onLanguageChange={handleLanguageChange}
-      />
+      <NavigationBar />
 
       <div className="jobs-content">
         <div className="container">
           <div className="jobs-header">
             <h1>
-              {content[language].pageTitle}
-              {isRecommended ? " (Recommended for you)" : ""}
+              {t("jobs.pageTitle")} {isRecommended ? t("jobs.recommendedTag") : ""}
             </h1>
 
             <div className="jobs-actions">
               <div className="search-container">
                 <input
                   type="text"
-                  placeholder={content[language].search}
+                  placeholder={t("jobs.searchPlaceholder")}
                   value={searchTerm}
                   onChange={handleSearch}
                   className="search-input"
@@ -317,13 +203,13 @@ const JobsPage = () => {
               </div>
 
               <button className="post-job-button" onClick={handleAddJob}>
-                <i className="fas fa-plus" /> {content[language].addJob}
+                <i className="fas fa-plus" /> {t("jobs.addJob")}
               </button>
             </div>
           </div>
 
           <div className="categories-section">
-            <h2>{content[language].categories}</h2>
+            <h2>{t("jobs.categoriesTitle")}</h2>
             <div className="categories-container">
               <div
                 className={`category-item ${
@@ -334,7 +220,7 @@ const JobsPage = () => {
                 <div className="category-icon">
                   <i className="fas fa-th-large" />
                 </div>
-                <span>{content[language].all}</span>
+                <span>{t("jobs.all")}</span>
               </div>
 
               {categories.map((category) => (
@@ -348,35 +234,33 @@ const JobsPage = () => {
                   <div className="category-icon">
                     <i className={`fas fa-${category.icon}`} />
                   </div>
-                  <span>
-                    {language === "en" ? category.nameEn : category.nameHi}
-                  </span>
+                  <span>{t(`jobs.category.${category.id}`)}</span>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="jobs-listing">
-            <h2>{content[language].popular}</h2>
+            <h2>{t("jobs.popular")}</h2>
 
             {loading ? (
               <div className="loading-container">
-                <p>{content[language].loading}</p>
+                <p>{t("jobs.loading")}</p>
               </div>
             ) : filteredJobs.length > 0 ? (
               <div className="jobs-grid">
                 {filteredJobs.map((job) => {
                   const title =
-                    (job.title && job.title[language]) || job.jobName || "Job";
+                    (job.title && job.title[currentLang]) || job.jobName || "Job";
 
                   const company =
                     typeof job.company === "object"
-                      ? job.company[language] || job.company.en || job.company
+                      ? job.company[currentLang] || job.company.en || job.company
                       : job.company || "";
 
                   const locationText =
                     typeof job.location === "object"
-                      ? job.location[language] ||
+                      ? job.location[currentLang] ||
                         job.location.en ||
                         job.location
                       : job.location || "";
@@ -386,29 +270,21 @@ const JobsPage = () => {
 
                   const availabilityText =
                     availability === "full-time"
-                      ? language === "en"
-                        ? "Full-time"
-                        : "पूर्णकालिक"
+                      ? t("jobs.fullTime")
                       : availability === "part-time"
-                      ? language === "en"
-                        ? "Part-time"
-                        : "अंशकालिक"
+                      ? t("jobs.partTime")
                       : availability === "weekends"
-                      ? language === "en"
-                        ? "Weekends"
-                        : "सप्ताहांत"
+                      ? t("jobs.weekends")
                       : availability === "flexible"
-                      ? language === "en"
-                        ? "Flexible"
-                        : "लचीला"
-                      : availability; // e.g. "day"/"night"
+                      ? t("jobs.flexible")
+                      : availability; // e.g. day/night
 
                   const icon = job.icon || "briefcase";
                   const skills = job.skillsRequired || [];
 
                   const description =
                     (job.description &&
-                      (job.description[language] ||
+                      (job.description[currentLang] ||
                         job.description.en ||
                         job.description)) ||
                     job.jobDescription ||
@@ -457,7 +333,7 @@ const JobsPage = () => {
 
                       <div className="job-card-footer">
                         <button className="apply-button">
-                          {content[language].applyNow}
+                          {t("jobs.applyNow")}
                         </button>
                       </div>
                     </div>
@@ -466,7 +342,7 @@ const JobsPage = () => {
               </div>
             ) : (
               <div className="no-jobs-container">
-                <p>{content[language].noJobs}</p>
+                <p>{t("jobs.noJobs")}</p>
               </div>
             )}
           </div>
@@ -478,7 +354,7 @@ const JobsPage = () => {
         <div className="modal-overlay">
           <div className="modal-container">
             <div className="modal-header">
-              <h2>{content[language].addNewJob}</h2>
+              <h2>{t("jobs.addNewJob")}</h2>
               <button
                 className="close-button"
                 onClick={() => setShowAddJobForm(false)}
@@ -490,27 +366,23 @@ const JobsPage = () => {
             <div className="modal-body">
               <form onSubmit={handleSubmitJob}>
                 <div className="form-group">
-                  <label htmlFor="jobTitle">{content[language].jobTitle}</label>
+                  <label htmlFor="jobTitle">{t("jobs.jobTitle")}</label>
                   <input type="text" id="jobTitle" required />
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="jobDescription">
-                    {content[language].jobDescription}
-                  </label>
+                  <label htmlFor="jobDescription">{t("jobs.jobDescription")}</label>
                   <textarea id="jobDescription" rows="4" required />
                 </div>
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="location">
-                      {content[language].location}
-                    </label>
+                    <label htmlFor="location">{t("jobs.location")}</label>
                     <input type="text" id="location" required />
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="salary">{content[language].salary}</label>
+                    <label htmlFor="salary">{t("jobs.salary")}</label>
                     <input
                       type="text"
                       id="salary"
@@ -522,82 +394,74 @@ const JobsPage = () => {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="category">
-                      {content[language].category}
-                    </label>
+                    <label htmlFor="category">{t("jobs.category")}</label>
                     <select id="category" required>
                       <option value="driver">
-                        {content[language].categoryDriver}
+                        {t("jobs.category.driver")}
                       </option>
                       <option value="cook">
-                        {content[language].categoryCook}
+                        {t("jobs.category.cook")}
                       </option>
                       <option value="cleaner">
-                        {content[language].categoryCleaner}
+                        {t("jobs.category.cleaner")}
                       </option>
                       <option value="gardener">
-                        {content[language].categoryGardener}
+                        {t("jobs.category.gardener")}
                       </option>
                       <option value="plumber">
-                        {content[language].categoryPlumber}
+                        {t("jobs.category.plumber")}
                       </option>
                       <option value="electrician">
-                        {content[language].categoryElectrician}
+                        {t("jobs.category.electrician")}
                       </option>
                       <option value="other">
-                        {content[language].categoryOther}
+                        {t("jobs.category.other")}
                       </option>
                     </select>
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="minAge">{content[language].minAge}</label>
+                    <label htmlFor="minAge">{t("jobs.minAge")}</label>
                     <input type="number" id="minAge" min="18" required />
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="availability">
-                    {content[language].availability}
-                  </label>
+                  <label htmlFor="availability">{t("jobs.availability")}</label>
                   <select id="availability" required>
                     <option value="full-time">
-                      {content[language].fullTime}
+                      {t("jobs.fullTime")}
                     </option>
                     <option value="part-time">
-                      {content[language].partTime}
+                      {t("jobs.partTime")}
                     </option>
                     <option value="weekends">
-                      {content[language].weekends}
+                      {t("jobs.weekends")}
                     </option>
                     <option value="flexible">
-                      {content[language].flexible}
+                      {t("jobs.flexible")}
                     </option>
                   </select>
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="skillsRequired">
-                    {content[language].skillsRequired}
-                  </label>
-                  <input
-                    type="text"
-                    id="skillsRequired"
-                    placeholder="Separate with commas"
-                    required
-                  />
+                  <label htmlFor="skillsRequired">{t("jobs.skillsRequired")}</label>
+                    <input
+                      type="text"
+                      id="skillsRequired"
+                      placeholder={t("jobs.skillsPlaceholder")}
+                      required
+                    />
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="experience">
-                    {content[language].experience}
-                  </label>
-                  <input
-                    type="text"
-                    id="experience"
-                    placeholder="e.g., 2+ years"
-                    required
-                  />
+                  <label htmlFor="experience">{t("jobs.experience")}</label>
+                    <input
+                      type="text"
+                      id="experience"
+                      placeholder={t("jobs.experiencePlaceholder")}
+                      required
+                    />
                 </div>
 
                 <div className="form-buttons">
@@ -606,10 +470,10 @@ const JobsPage = () => {
                     className="cancel-button"
                     onClick={() => setShowAddJobForm(false)}
                   >
-                    {content[language].cancel}
+                    {t("jobs.cancel")}
                   </button>
                   <button type="submit" className="submit-button">
-                    {content[language].submitJob}
+                    {t("jobs.submitJob")}
                   </button>
                 </div>
               </form>
@@ -623,7 +487,7 @@ const JobsPage = () => {
         <div className="modal-overlay">
           <div className="modal-container user-type-modal">
             <div className="modal-header">
-              <h2>{content[language].userTypeQuestion}</h2>
+              <h2>{t("jobs.userTypeQuestion")}</h2>
               <button
                 className="close-button"
                 onClick={() => setShowUserTypeModal(false)}
@@ -641,8 +505,8 @@ const JobsPage = () => {
                   <div className="user-type-icon">
                     <i className="fas fa-hard-hat" />
                   </div>
-                  <h3>{content[language].worker}</h3>
-                  <p>{content[language].workerInfo}</p>
+                  <h3>{t("jobs.worker")}</h3>
+                  <p>{t("jobs.workerInfo")}</p>
                 </div>
 
                 <div
@@ -652,8 +516,8 @@ const JobsPage = () => {
                   <div className="user-type-icon">
                     <i className="fas fa-building" />
                   </div>
-                  <h3>{content[language].contractor}</h3>
-                  <p>{content[language].contractorInfo}</p>
+                  <h3>{t("jobs.contractor")}</h3>
+                  <p>{t("jobs.contractorInfo")}</p>
                 </div>
               </div>
             </div>
@@ -661,7 +525,7 @@ const JobsPage = () => {
         </div>
       )}
 
-      <Footer language={language} />
+      <Footer />
     </div>
   );
 };

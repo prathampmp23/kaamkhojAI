@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 import NavigationBar from "../components/NavigationBar";
 import Footer from "../components/Footer";
@@ -7,6 +8,7 @@ import useAuth from "../hooks/useAuth";
 import "./LoginPage.css";
 
 export default function LoginPage() {
+  const { i18n } = useTranslation();
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -14,7 +16,7 @@ export default function LoginPage() {
   });
   const [errors, setErrors] = useState({});
   const [notification, setNotification] = useState(null);
-  const [language, setLanguage] = useState("en"); // Default language is English
+  const [language, setLanguage] = useState(i18n.language || "en");
   const { isLoading, error, login, setError } = useAuth();
   const location = useLocation();
   
@@ -23,8 +25,14 @@ export default function LoginPage() {
     const savedLanguage = localStorage.getItem("preferredLanguage");
     if (savedLanguage) {
       setLanguage(savedLanguage);
+      i18n.changeLanguage(savedLanguage);
     }
-  }, []);
+  }, [i18n]);
+
+  // keep local language in sync with i18n changes triggered elsewhere (e.g., navbar)
+  useEffect(() => {
+    setLanguage(i18n.language || "en");
+  }, [i18n.language]);
   
   // Check if user was redirected from registration
   useEffect(() => {
@@ -57,6 +65,25 @@ export default function LoginPage() {
       passwordLength: "पासवर्ड कम से कम 6 अक्षरों का होना चाहिए",
       registrationSuccess: "पंजीकरण सफल! अब आप लॉग इन कर सकते हैं।",
     },
+    mr: {
+      welcomeBack: "पुन्हा स्वागत आहे",
+      enterCredentials: "कृपया लॉगिन माहिती भरा",
+      username: "वापरकर्तानाव",
+      enterUsername: "आपले वापरकर्तानाव भरा",
+      password: "पासवर्ड",
+      enterPassword: "आपला पासवर्ड भरा",
+      rememberMe: "मला लक्षात ठेवा",
+      forgotPassword: "पासवर्ड विसरलात?",
+      login: "लॉगिन",
+      loggingIn: "लॉगिन चालू आहे...",
+      orLoginWith: "किंवा याने लॉगिन करा",
+      dontHaveAccount: "खाते नाही?",
+      signUp: "साइन अप",
+      usernameRequired: "वापरकर्तानाव आवश्यक आहे",
+      passwordRequired: "पासवर्ड आवश्यक आहे",
+      passwordLength: "पासवर्ड किमान 6 अक्षरे असावा",
+      registrationSuccess: "नोंदणी यशस्वी! आता आपण लॉगिन करू शकता.",
+    },
     en: {
       welcomeBack: "Welcome Back",
       enterCredentials: "Please enter your credentials to login",
@@ -81,7 +108,8 @@ export default function LoginPage() {
   // Handle language change
   const handleLanguageChange = (lang) => {
     setLanguage(lang);
-    localStorage.setItem("preferredLanguage", lang);
+    try { localStorage.setItem("preferredLanguage", lang); } catch {}
+    i18n.changeLanguage(lang);
   };
   
   // Set error from auth hook to our local errors state

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import NavigationBar from "../components/NavigationBar";
 import Footer from "../components/Footer";
@@ -6,6 +7,7 @@ import useAuth from "../hooks/useAuth";
 import "./SignupPage.css";
 
 export default function SignupPage() {
+  const { i18n } = useTranslation();
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -14,7 +16,7 @@ export default function SignupPage() {
     agreeTerms: false
   });
   const [errors, setErrors] = useState({});
-  const [language, setLanguage] = useState("en"); // Default language is English
+  const [language, setLanguage] = useState(i18n.language || "en");
   const { isLoading, error, register, setError } = useAuth();
   
   // Load saved language preference
@@ -22,8 +24,14 @@ export default function SignupPage() {
     const savedLanguage = localStorage.getItem("preferredLanguage");
     if (savedLanguage) {
       setLanguage(savedLanguage);
+      i18n.changeLanguage(savedLanguage);
     }
-  }, []);
+  }, [i18n]);
+
+  // keep local language in sync with i18n changes triggered elsewhere (e.g., navbar)
+  useEffect(() => {
+    setLanguage(i18n.language || "en");
+  }, [i18n.language]);
   
   // Translation content
   const content = {
@@ -53,6 +61,33 @@ export default function SignupPage() {
       passwordLength: "पासवर्ड कम से कम 6 अक्षरों का होना चाहिए",
       passwordsDoNotMatch: "पासवर्ड मेल नहीं खाते",
       mustAgreeTerms: "आपको नियम और शर्तों से सहमत होना चाहिए"
+    },
+    mr: {
+      createAccount: "खाते तयार करा",
+      joinKaamkhoj: "योग्य नोकरी शोधण्यासाठी KaamKhoj मध्ये सामील व्हा",
+      username: "वापरकर्तानाव",
+      chooseUsername: "वापरकर्तानाव निवडा",
+      email: "ईमेल",
+      enterEmail: "आपला ईमेल भरा",
+      password: "पासवर्ड",
+      createPassword: "पासवर्ड तयार करा",
+      confirmPassword: "पासवर्डची पुष्टी करा",
+      confirmYourPassword: "आपला पासवर्ड पुष्टी करा",
+      agreeTerms: "मी अटी व शर्ती आणि गोपनीयता धोरणास सहमत आहे",
+      termsAndConditions: "अटी व शर्ती",
+      privacyPolicy: "गोपनीयता धोरण",
+      signUp: "साइन अप",
+      creatingAccount: "खाते तयार होत आहे...",
+      alreadyHaveAccount: "आधीच खाते आहे?",
+      login: "लॉगिन",
+      usernameRequired: "वापरकर्तानाव आवश्यक आहे",
+      usernameLength: "वापरकर्तानाव किमान 3 अक्षरे असावे",
+      emailRequired: "ईमेल आवश्यक आहे",
+      invalidEmail: "ईमेल पत्ता अवैध आहे",
+      passwordRequired: "पासवर्ड आवश्यक आहे",
+      passwordLength: "पासवर्ड किमान 6 अक्षरे असावा",
+      passwordsDoNotMatch: "पासवर्ड जुळत नाहीत",
+      mustAgreeTerms: "आपण अटी व शर्ती मान्य करणे आवश्यक आहे"
     },
     en: {
       createAccount: "Create Account",
@@ -86,7 +121,8 @@ export default function SignupPage() {
   // Handle language change
   const handleLanguageChange = (lang) => {
     setLanguage(lang);
-    localStorage.setItem("preferredLanguage", lang);
+    try { localStorage.setItem("preferredLanguage", lang); } catch {}
+    i18n.changeLanguage(lang);
   };
 
   // Set error from auth hook to our local errors state
@@ -275,7 +311,7 @@ export default function SignupPage() {
               <label htmlFor="agreeTerms" className="terms-text">
                 {content[language].agreeTerms.split('Terms and Conditions')[0]}
                 <Link to="/terms" className="terms-link">{content[language].termsAndConditions}</Link>
-                {' '}{content[language].agreeTerms.includes('and') ? 'and' : 'और'}{' '}
+                {' '}{language === 'hi' ? 'और' : language === 'mr' ? 'आणि' : 'and'}{' '}
                 <Link to="/privacy" className="terms-link">{content[language].privacyPolicy}</Link>
               </label>
             </div>
