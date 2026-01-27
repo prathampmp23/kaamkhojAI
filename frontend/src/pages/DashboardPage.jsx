@@ -128,7 +128,7 @@ const DashboardPage = () => {
           
           try {
             // Try to fetch from API
-            const response = await fetch(`http://localhost:5000/profile/${user.id}`, {
+            const response = await fetch(`https://kaamkhojaibackend.onrender.com/profile/${user.id}`, {
               headers: {
                 'Authorization': `Bearer ${token || ''}`
               }
@@ -158,7 +158,7 @@ const DashboardPage = () => {
                 
                 // Fetch recommended jobs based on AI-created profile
                 try {
-                  const jobsResponse = await fetch('http://localhost:5000/jobs');
+                  const jobsResponse = await fetch('https://kaamkhojaibackend.onrender.com/jobs');
                   if (jobsResponse.ok) {
                     const jobsData = await jobsResponse.json();
                     // Filter jobs based on skills if available

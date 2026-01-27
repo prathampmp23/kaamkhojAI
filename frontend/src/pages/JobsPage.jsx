@@ -62,7 +62,7 @@ const JobsPage = () => {
   const fetchJobs = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("http://localhost:5000/api/jobs");
+      const res = await axios.get("https://kaamkhojaibackend.onrender.com/api/jobs");
       if (res.data.success) {
         setJobs(res.data.jobs || []);
       } else {
@@ -123,8 +123,8 @@ const JobsPage = () => {
 
     try {
       // backend POST route should accept this:
-      // POST http://localhost:5000/api/jobs
-      const res = await axios.post("http://localhost:5000/api/jobs", payload);
+      // POST https://kaamkhojaibackend.onrender.com/api/jobs
+      const res = await axios.post("https://kaamkhojaibackend.onrender.com/api/jobs", payload);
       if (res.data.success) {
         alert(t("jobs.submitSuccess"));
         form.reset();

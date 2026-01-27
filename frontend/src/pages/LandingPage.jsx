@@ -10,6 +10,7 @@ import "./LandingPage.css";
 
 const LandingPage = () => {
   const { t } = useTranslation();
+  const features = t("features.list", { returnObjects: true });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -39,8 +40,8 @@ const LandingPage = () => {
               <div className="container">
                 <h2 className="section-title">{t("features.title")}</h2>
                 <div className="features-grid">
-                  {t("features.list", { returnObjects: true }).map(
-                    (feature, index) => (
+                  {Array.isArray(features) ? (
+                    features.map((feature, index) => (
                       <div className="feature" key={index}>
                         <div className="feature-icon">
                           <i
@@ -54,14 +55,13 @@ const LandingPage = () => {
                             }`}
                           ></i>
                         </div>
-                        <div className="">
-                          <h3>{feature.title}</h3>
-                        </div>
-                        <div className="">
-                          <p>{feature.description}</p>
-                        </div>
+
+                        <h3>{feature.title}</h3>
+                        <p>{feature.description}</p>
                       </div>
-                    ),
+                    ))
+                  ) : (
+                    <p>Loading features...</p>
                   )}
                 </div>
               </div>

@@ -175,6 +175,13 @@ const AiAssistantPage = () => {
   const server_url = `${server}`;
 
   const { t, i18n } = useTranslation();
+  // Language toggle handler (same behavior as navbar)
+  const changeLanguage = (lang) => {
+    try {
+      i18n.changeLanguage(lang);
+      localStorage.setItem("preferredLanguage", lang);
+    } catch {}
+  };
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [messages, setMessages] = useState([]);
@@ -591,6 +598,30 @@ const AiAssistantPage = () => {
       <NavigationBar />
       <div className="ai-assistant-page">
         <div className="ai-assistant-container">
+          {/* Inline language toggle for Assistant page */}
+          <div className="ai-lang-bar">
+            <span className="ai-lang-title">{t("language")}</span>
+            <div className="ai-lang-buttons">
+              <button
+                className={`ai-lang-btn ${i18n.language === "en" ? "active" : ""}`}
+                onClick={() => changeLanguage("en")}
+              >
+                English
+              </button>
+              <button
+                className={`ai-lang-btn ${i18n.language === "hi" ? "active" : ""}`}
+                onClick={() => changeLanguage("hi")}
+              >
+                हिंदी
+              </button>
+              <button
+                className={`ai-lang-btn ${i18n.language === "mr" ? "active" : ""}`}
+                onClick={() => changeLanguage("mr")}
+              >
+                मराठी
+              </button>
+            </div>
+          </div>
           <div className="window-header"></div>
           <div className={`sphere ${isListening ? "listening" : ""}`}>
             <video
@@ -623,7 +654,7 @@ const AiAssistantPage = () => {
             <button className="control-button" onClick={cancelListening}>
               <X />
             </button>
-            <button className="control-button" onClick={toggleListening}>
+            <button className="control-button mic-btn" onClick={toggleListening}>
               <Mic />
             </button>
           </div>

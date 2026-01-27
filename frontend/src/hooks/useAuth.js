@@ -32,7 +32,7 @@ export const useAuth = () => {
         throw new Error(data.message || "Login failed");
       }
 
-      console.log("Login successful with:", credentials);
+      // console.log("Login successful with:", credentials);
 
       // Store user data from response
       const userData = data.user;

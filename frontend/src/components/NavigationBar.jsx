@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import "./NavigationBar.css";
@@ -12,6 +13,7 @@ const NavigationBar = ({ onLanguageChange }) => {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const { isAuthenticated, setIsAuthenticated, setCurrentUser } = useAuthContext();
   const navigate = useNavigate();
+  const [isMobile, setIsMobile] = useState(false);
 
   // Handle scroll effect for navbar
   useEffect(() => {
@@ -24,6 +26,26 @@ const NavigationBar = ({ onLanguageChange }) => {
       window.removeEventListener("scroll", handleScroll);
     };
   }, []);
+
+  // Detect mobile viewport for conditional modal menu
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 992);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Prevent body scroll when mobile modal is open
+  useEffect(() => {
+    if (isMobile && menuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobile, menuOpen]);
 
   // Toggle mobile menu
   const toggleMenu = () => {
@@ -219,6 +241,55 @@ const NavigationBar = ({ onLanguageChange }) => {
           </div>
         </div>
       </div>
+      {/* Mobile Modal Menu via Portal (ensures full-viewport coverage) */}
+      {isMobile && menuOpen && createPortal(
+        (
+          <div className="mobile-modal-overlay" onClick={toggleMenu}>
+            <div className="mobile-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="mobile-modal-header">
+                <span className="mobile-modal-title">{t('brandName')}</span>
+                <button className="mobile-modal-close" aria-label="Close menu" onClick={toggleMenu}>×</button>
+              </div>
+              <div className="mobile-modal-body">
+                <Link to="/" className="mobile-modal-link" onClick={toggleMenu}>{t('home')}</Link>
+                <Link to="/jobs" className="mobile-modal-link" onClick={toggleMenu}>{t('jobsLabel')}</Link>
+                <Link to="/assistant" className="mobile-modal-link" onClick={toggleMenu}>{t('assistant')}</Link>
+                <div className="mobile-modal-section">
+                  <div className="mobile-modal-section-title">{t('language')}</div>
+                  <div className="mobile-language-buttons">
+                    <button className={`mobile-lang-btn ${i18n.language === 'en' ? 'active' : ''}`} onClick={() => {handleLanguageChange('en');}}>
+                      English
+                    </button>
+                    <button className={`mobile-lang-btn ${i18n.language === 'hi' ? 'active' : ''}`} onClick={() => {handleLanguageChange('hi');}}>
+                      हिंदी
+                    </button>
+                    <button className={`mobile-lang-btn ${i18n.language === 'mr' ? 'active' : ''}`} onClick={() => {handleLanguageChange('mr');}}>
+                      मराठी
+                    </button>
+                  </div>
+                </div>
+
+                {isAuthenticated ? (
+                  <div className="mobile-modal-section">
+                    <div className="mobile-modal-section-title">{t('user')}</div>
+                    <Link to="/profile" className="mobile-modal-link" onClick={toggleMenu}>{t('profile')}</Link>
+                    <Link to="/dashboard" className="mobile-modal-link" onClick={toggleMenu}>{t('dashboard')}</Link>
+                    <button className="mobile-modal-link danger" onClick={() => {toggleMenu(); handleLogout();}}>
+                      <i className="fas fa-sign-out-alt mr-2"></i>{t('logout')}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mobile-auth-row">
+                    <Link to="/login" className="login-btn" onClick={toggleMenu}>{t('login')}</Link>
+                    <Link to="/signup" className="signup-btn" onClick={toggleMenu}>{t('signup')}</Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ),
+        document.body
+      )}
     </nav>
   );
 };
