@@ -7,6 +7,7 @@ const authRoutes = require("./routes/authRoutes");
 const jobRoutes = require("./routes/jobRoutes");
 const geminiRoutes = require("./routes/geminiRoutes");
 const voiceRoutes = require("./routes/voiceRoutes");
+const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -57,6 +58,13 @@ app.use("/api/jobs", jobRoutes);
 // --- Health check route (optional but useful on Render) ---
 app.get("/", (req, res) => {
   res.json({ ok: true, message: "Backend is running.." });
+});
+
+// Serve frontend build
+app.use(express.static(path.join(__dirname, "client/dist")));
+
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, "client/dist/index.html"));
 });
 
 // --- Start Server ---
