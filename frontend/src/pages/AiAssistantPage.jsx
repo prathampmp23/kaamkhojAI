@@ -69,24 +69,24 @@ const getFieldPrompt = (field, lang) => {
 const getRetryPrompt = (field, lang) => {
   const prompts = {
     name: {
-      en: "Please click the mic again and say your full name clearly.",
-      hi: "कृपया दोबारा माइक पर क्लिक करें और अपना पूरा नाम साफ़-साफ़ बोलिए।",
-      mr: "कृपया पुन्हा माईकवर क्लिक करा आणि तुमचे पूर्ण नाव स्पष्ट बोला.",
+      en: "I didn't catch that clearly. Please say your full name again.",
+      hi: "मुझे ठीक से समझ नहीं आया। कृपया अपना पूरा नाम फिर से बताइए।",
+      mr: "मला ते नीट कळले नाही. कृपया तुमचे पूर्ण नाव पुन्हा सांगा.",
     },
     age: {
-      en: "Please say your age in years (for example: twenty three).",
-      hi: "कृपया अपनी उम्र सालों में बताइए (जैसे: तेईस)।",
-      mr: "कृपया तुमचे वय वर्षांत सांगा (उदा.: तेवीस).",
+      en: "Please say your age in years clearly (for example: twenty three).",
+      hi: "कृपया अपनी उम्र साफ़ बताइए (जैसे: तेईस)।",
+      mr: "कृपया तुमचे वय स्पष्ट सांगा (उदा.: तेवीस).",
     },
     address: {
       en: "Please say your address or nearby area again.",
-      hi: "कृपया अपना पता या आस-पास का इलाका फिर से बताइए।",
-      mr: "कृपया तुमचा पत्ता किंवा जवळचा परिसर पुन्हा सांगा.",
+      hi: "कृपया अपना पता फिर से बताइए।",
+      mr: "कृपया तुमचा पत्ता पुन्हा सांगा.",
     },
     phone: {
-      en: "Please say your 10-digit phone number slowly.",
-      hi: "कृपया अपना 10 अंकों का फोन नंबर धीरे-धीरे बोलिए।",
-      mr: "कृपया तुमचा 10 अंकी फोन नंबर हळू आवाजात सांगा.",
+      en: "Please say your 10-digit phone number slowly, one digit at a time.",
+      hi: "कृपया अपना 10 अंकों का नंबर धीरे-धीरे, एक-एक अंक बोलिए।",
+      mr: "कृपया तुमचा 10 अंकी नंबर हळू, एक-एक अंक सांगा.",
     },
     shift_time: {
       en: "Say day, night, or flexible.",
@@ -95,18 +95,18 @@ const getRetryPrompt = (field, lang) => {
     },
     experience: {
       en: "Say how many years of experience you have.",
-      hi: "बताइए आपके पास कितने साल का अनुभव है।",
-      mr: "तुमच्याकडे किती वर्षांचा अनुभव आहे ते सांगा.",
+      hi: "बताइए कितने साल का अनुभव है।",
+      mr: "किती वर्षांचा अनुभव आहे ते सांगा.",
     },
     job_title: {
       en: "Say your desired job type again.",
-      hi: "अपनी मनचाही नौकरी का प्रकार फिर से बोलिए।",
-      mr: "तुमची इच्छित नोकरीचा प्रकार पुन्हा सांगा.",
+      hi: "अपनी नौकरी का प्रकार फिर से बोलिए।",
+      mr: "तुमची नोकरीचा प्रकार पुन्हा सांगा.",
     },
     salary_expectation: {
-      en: "What monthly salary do you expect? Please say it clearly, for example: twenty thousand, or say the digits one by one, like: two zero zero zero zero.",
-      hi: "आप कितनी मासिक तनख्वाह की उम्मीद करते हैं? कृपया साफ़ बोलें, जैसे: बीस हज़ार, या अंकों में एक-एक करके: 2 0 0 0 0.",
-      mr: "तुम्ही मासिक किती पगार अपेक्षित करता? कृपया स्पष्ट बोला, जसे: वीस हजार, किंवा आकडे एकेक करून: 2 0 0 0 0.",
+      en: "What monthly salary do you expect? Please say it clearly.",
+      hi: "मासिक तनख्वाह कितनी चाहिए? साफ़ बोलें।",
+      mr: "मासिक पगार किती हवा? स्पष्ट बोला.",
     },
   };
 
@@ -114,74 +114,19 @@ const getRetryPrompt = (field, lang) => {
   return prompts[field]?.[langKey] || "";
 };
 
-// simple name heuristic, same as your original
-const isLikelyName = (text) => {
-  if (!text) return false;
-  const cleaned = text.trim();
-  if (/\d/.test(cleaned)) return false;
-
-  const badKeywords = [
-    "year",
-    "years",
-    "age",
-    "address",
-    "phone",
-    "number",
-    "salary",
-    "shift",
-    "experience",
-    "job",
-    "umar",
-    "umra",
-    "patta",
-    "pata",
-    "mobile",
-    "nambar",
-    "tankhwa",
-    "pagar",
-    "anubhav",
-    "nokari",
-  ];
-  const lower = cleaned.toLowerCase();
-  if (badKeywords.some((k) => lower.includes(k))) return false;
-
-  const words = cleaned.split(/\s+/).filter(Boolean);
-  if (words.length < 1 || words.length > 3) return false;
-  if (
-    !words.every((w) =>
-      /^[A-Za-z\u0900-\u097F\u0995-\u09FF\u0A80-\u0AFF\-']+$/.test(w),
-    )
-  )
-    return false;
-
-  const generic = [
-    "yes",
-    "no",
-    "haan",
-    "na",
-    "ho",
-    "nahi",
-    "नहीं",
-    "हो",
-    "हां",
-  ];
-  if (generic.includes(lower)) return false;
-
-  return true;
-};
-
 const AiAssistantPage = () => {
   const navigate = useNavigate();
   const server_url = `${server}`;
 
   const { t, i18n } = useTranslation();
-  // Language toggle handler (same behavior as navbar)
+
   const changeLanguage = (lang) => {
     try {
       i18n.changeLanguage(lang);
       localStorage.setItem("preferredLanguage", lang);
     } catch {}
   };
+
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [messages, setMessages] = useState([]);
@@ -202,22 +147,46 @@ const AiAssistantPage = () => {
   }, [formData]);
 
   const [currentFieldIndex, setCurrentFieldIndex] = useState(0);
-  const currentFieldIndexRef = useRef(0); // 🔑 source of truth for field index
+  const currentFieldIndexRef = useRef(0);
   const [retryCounts, setRetryCounts] = useState({});
   const recognitionRef = useRef(null);
   const [userName] = useState("User");
   const processingLockRef = useRef(false);
   const [voicesLoaded, setVoicesLoaded] = useState(false);
+  const isActiveRef = useRef(true);
 
-  // Ensure browser voices are loaded before speaking
+  // Cleanup on unmount
+  useEffect(() => {
+    isActiveRef.current = true;
+    return () => {
+      isActiveRef.current = false;
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.onresult = null;
+          recognitionRef.current.onend = null;
+          recognitionRef.current.onerror = null;
+          recognitionRef.current.stop();
+        } catch (e) {
+          console.error("Error stopping recognition on unmount:", e);
+        }
+      }
+      if (window.speechSynthesis) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch (e) {
+          console.error("Error cancelling speechSynthesis on unmount:", e);
+        }
+      }
+    };
+  }, []);
+
+  // Ensure browser voices are loaded
   useEffect(() => {
     if (!window.speechSynthesis) return;
     const handleVoicesChanged = () => {
-      // Some browsers require this event before voices become available
       const list = window.speechSynthesis.getVoices();
       setVoicesLoaded(Array.isArray(list) && list.length > 0);
     };
-    // Trigger once in case voices are already available
     handleVoicesChanged();
     window.speechSynthesis.onvoiceschanged = handleVoicesChanged;
     return () => {
@@ -225,51 +194,19 @@ const AiAssistantPage = () => {
     };
   }, []);
 
-  //   useEffect(() => {
-  //     // This runs when AiAssistantPage is mounted
-
-  //     return () => {
-  //       // This runs automatically when AiAssistantPage unmounts
-  //       if (recognitionRef.current) {
-  //         try {
-  //           recognitionRef.current.onresult = null;
-  //           recognitionRef.current.onend = null;
-  //           recognitionRef.current.onerror = null;
-  //           recognitionRef.current.stop();
-  //           recognitionRef.current.abort && recognitionRef.current.abort();
-  //         } catch (e) {
-  //           console.error("Error stopping recognition on unmount:", e);
-  //         }
-  //       }
-
-  //       if (window.speechSynthesis) {
-  //         try {
-  //           window.speechSynthesis.cancel();
-  //         } catch (e) {
-  //           console.error("Error cancelling speechSynthesis on unmount:", e);
-  //         }
-  //       }
-  //     };
-  //   }, []);
-
-  //   const isActiveRef = useRef(true);
-
-  //   useEffect(() => {
-  //     isActiveRef.current = true;
-  //     return () => {
-  //       isActiveRef.current = false;
-  //     };
-  //   }, []);
-
   const speak = (text, lang, onend) => {
-    if (!window.speechSynthesis || !text) return;
-    // if (!isActiveRef.current) return; // don't speak if page is no longer active
+    if (!window.speechSynthesis || !text || !isActiveRef.current) return;
 
     const utterance = new SpeechSynthesisUtterance(text);
     const requested =
-      lang === "en" ? "en-IN" : lang === "hi" ? "hi-IN" : lang === "mr" ? "mr-IN" : lang;
-    
-    // Choose best available voice with sensible fallbacks
+      lang === "en"
+        ? "en-IN"
+        : lang === "hi"
+          ? "hi-IN"
+          : lang === "mr"
+            ? "mr-IN"
+            : lang;
+
     const voices = window.speechSynthesis.getVoices();
     const lower = (s) => (s || "").toLowerCase();
     const findExact = voices.find((v) => lower(v.lang) === lower(requested));
@@ -280,7 +217,6 @@ const AiAssistantPage = () => {
     const findEn = voices.find((v) => lower(v.lang).startsWith("en"));
 
     let chosen = findExact || findBase;
-    // Marathi often lacks direct voices; fall back to Hindi (Devanagari) then English
     if (!chosen && base === "mr") {
       chosen = findHindi || findEnIn || findEn;
     }
@@ -292,10 +228,8 @@ const AiAssistantPage = () => {
       utterance.voice = chosen;
       utterance.lang = chosen.lang || requested;
     } else {
-      // As a last resort, set a readable locale
       utterance.lang = requested === "mr-IN" ? "hi-IN" : requested;
     }
-    if (onend) utterance.onend = onend;
 
     const wrappedOnEnd = () => {
       if (!isActiveRef.current) return;
@@ -307,10 +241,8 @@ const AiAssistantPage = () => {
     window.speechSynthesis.speak(utterance);
   };
 
-  // Helper to get current field safely
   const getCurrentField = () => flowOrder[currentFieldIndexRef.current];
 
-  // Helper to advance to next field (never backwards)
   const goToNextField = () => {
     const nextIndex = Math.min(
       currentFieldIndexRef.current + 1,
@@ -321,7 +253,6 @@ const AiAssistantPage = () => {
   };
 
   useEffect(() => {
-    // reset field index ref on language/user change
     currentFieldIndexRef.current = 0;
     setCurrentFieldIndex(0);
 
@@ -329,7 +260,6 @@ const AiAssistantPage = () => {
     const prompt = t("prompt");
 
     setMessages([{ sender: "ai", text: welcomeMessage, prompt }]);
-    // Speak welcome + generic instructions (not field specific)
     speak(`${welcomeMessage} ${prompt}`, i18n.language);
 
     if ("webkitSpeechRecognition" in window) {
@@ -355,7 +285,6 @@ const AiAssistantPage = () => {
 
       recognition.onresult = (event) => {
         const finalTranscript = event.results[0][0].transcript.trim();
-        // stop listening BEFORE processing to avoid echo
         if (recognitionRef.current) {
           recognitionRef.current.stop();
         }
@@ -374,8 +303,7 @@ const AiAssistantPage = () => {
   }, [userName, i18n.language, t]);
 
   const handleTranscript = async (text) => {
-    if (!text) return;
-    if (processingLockRef.current) return;
+    if (!text || processingLockRef.current) return;
     processingLockRef.current = true;
 
     setMessages((prev) => [...prev, { sender: "user", text }]);
@@ -384,33 +312,30 @@ const AiAssistantPage = () => {
     const lang = i18n.language;
 
     try {
-      const res = await axios.post(`${server_url}/api/voice/process`, {
+      // Call backend AI validation endpoint
+      const res = await axios.post(`${server_url}/api/voice/validate-with-ai`, {
         text,
         fieldType: field,
+        language: lang,
       });
 
-      const { success, extractedValue } = res.data;
+      const { success, extractedValue, confidence } = res.data;
       let value = extractedValue;
 
-      // extra guard for age
-      if (field === "age" && (!success || !value)) {
-        const digits = (text || "").replace(/\D/g, "").match(/(\d{1,2})/);
-        if (digits) value = parseInt(digits[1], 10);
-      }
+      console.log("AI Validation:", { field, success, value, confidence });
 
-      if ((success || value !== null) && value !== "") {
-        // we have a usable value
+      if (success && value !== null && value !== "") {
+        // Valid value captured
         setFormData((prev) => {
           const updated = { ...prev, [field]: value };
           console.log("Captured field:", field, "=", value);
           return updated;
         });
 
-        // reset retry count for this field
         setRetryCounts((prev) => ({ ...prev, [field]: 0 }));
 
         if (currentFieldIndexRef.current + 1 < flowOrder.length) {
-          // advance to next field
+          // Move to next field
           goToNextField();
           const nextField = getCurrentField();
           const promptText = getFieldPrompt(nextField, lang);
@@ -422,11 +347,11 @@ const AiAssistantPage = () => {
             ]);
           }
         } else {
-          // all fields filled -> submit profile
+          // All fields filled - submit profile
           try {
             const finalData = {
-              ...formDataRef.current, // use the up-to-date ref
-              [field]: value, // and override with the last captured field
+              ...formDataRef.current,
+              [field]: value,
             };
 
             console.log("Submitting finalData:", finalData);
@@ -442,7 +367,6 @@ const AiAssistantPage = () => {
               recommendedJobs,
             } = profileRes.data;
 
-            // 🔹 Save worker profile locally for ProfilePage
             localStorage.setItem(
               "workerProfile",
               JSON.stringify({
@@ -471,7 +395,6 @@ const AiAssistantPage = () => {
               });
             } else {
               jobRecommendationSpeech = t("noJobsFoundMessage");
-              // e.g. "No exact matches found. I'll show you all jobs."
             }
 
             speak(jobRecommendationSpeech, lang);
@@ -480,7 +403,6 @@ const AiAssistantPage = () => {
               { sender: "ai", text: jobRecommendationSpeech, prompt: "" },
             ]);
 
-            // Redirect to jobs page with recommended jobs
             setTimeout(() => {
               navigate("/jobs", {
                 state: {
@@ -499,73 +421,83 @@ const AiAssistantPage = () => {
           }
         }
       } else {
-        // extractor failed -> retry logic
-        // special case for name: accept if it "looks like" a name
-        if (field === "name" && text && isLikelyName(text.trim())) {
-          setFormData((prev) => ({ ...prev, name: text.trim() }));
-          // move to age
-          goToNextField();
-          const nextField = getCurrentField();
-          const promptText = getFieldPrompt(nextField, lang);
-          if (promptText) {
-            speak(promptText, lang);
-            setMessages((prev) => [
-              ...prev,
-              { sender: "ai", text: promptText, prompt: "" },
-            ]);
-          }
-        } else {
-          setRetryCounts((prev) => {
-            const count = (prev[field] || 0) + 1;
-            const nextCounts = { ...prev, [field]: count };
-            const retryPrompt = getRetryPrompt(field, lang);
+        // Validation failed - retry logic
+        setRetryCounts((prev) => {
+          const count = (prev[field] || 0) + 1;
+          const nextCounts = { ...prev, [field]: count };
+          const retryPrompt = getRetryPrompt(field, lang);
 
-            if (count >= 2 && text && text.trim()) {
-              // after 2 retries, accept raw text (except very bad name)
-              if (field === "name" && !isLikelyName(text.trim())) {
-                speak(retryPrompt, lang);
+          if (count >= 2 && text.trim()) {
+            // After 2 retries, accept the input as-is
+            console.log("Max retries reached, accepting input:", text.trim());
+            setFormData((prevForm) => ({
+              ...prevForm,
+              [field]: text.trim(),
+            }));
+
+            if (currentFieldIndexRef.current + 1 < flowOrder.length) {
+              goToNextField();
+              const nextField = getCurrentField();
+              const promptText = getFieldPrompt(nextField, lang);
+              if (promptText) {
+                speak(promptText, lang);
                 setMessages((prevMsgs) => [
                   ...prevMsgs,
-                  { sender: "ai", text: retryPrompt, prompt: "" },
+                  { sender: "ai", text: promptText, prompt: "" },
                 ]);
-              } else {
-                setFormData((prevForm) => ({
-                  ...prevForm,
-                  [field]: text.trim(),
-                }));
-                if (currentFieldIndexRef.current + 1 < flowOrder.length) {
-                  goToNextField();
-                  const nextField = getCurrentField();
-                  const promptText = getFieldPrompt(nextField, lang);
-                  if (promptText) {
-                    speak(promptText, lang);
-                    setMessages((prevMsgs) => [
-                      ...prevMsgs,
-                      { sender: "ai", text: promptText, prompt: "" },
-                    ]);
-                  }
-                }
               }
-            } else {
-              speak(retryPrompt, lang);
-              setMessages((prevMsgs) => [
-                ...prevMsgs,
-                { sender: "ai", text: retryPrompt, prompt: "" },
-              ]);
             }
+          } else {
+            // Ask to retry
+            speak(retryPrompt, lang);
+            setMessages((prevMsgs) => [
+              ...prevMsgs,
+              { sender: "ai", text: retryPrompt, prompt: "" },
+            ]);
+          }
 
-            return nextCounts;
-          });
-        }
+          return nextCounts;
+        });
       }
     } catch (error) {
       console.error("Error processing text:", error);
-      const errorMessage = t("connectionError");
-      setMessages((prev) => [
-        ...prev,
-        { sender: "ai", text: errorMessage, prompt: "" },
-      ]);
-      speak(errorMessage, i18n.language);
+
+      // If AI validation fails, try to accept the input anyway after 1 retry
+      setRetryCounts((prev) => {
+        const count = (prev[field] || 0) + 1;
+        const nextCounts = { ...prev, [field]: count };
+
+        if (count >= 1 && text.trim()) {
+          console.log("API error, accepting input:", text.trim());
+          setFormData((prevForm) => ({
+            ...prevForm,
+            [field]: text.trim(),
+          }));
+
+          if (currentFieldIndexRef.current + 1 < flowOrder.length) {
+            goToNextField();
+            const nextField = getCurrentField();
+            const promptText = getFieldPrompt(nextField, lang);
+            if (promptText) {
+              speak(promptText, lang);
+              setMessages((prev) => [
+                ...prev,
+                { sender: "ai", text: promptText, prompt: "" },
+              ]);
+            }
+          }
+        } else {
+          const errorMessage =
+            t("connectionError") || "Connection error. Please try again.";
+          setMessages((prev) => [
+            ...prev,
+            { sender: "ai", text: errorMessage, prompt: "" },
+          ]);
+          speak(errorMessage, i18n.language);
+        }
+
+        return nextCounts;
+      });
     } finally {
       processingLockRef.current = false;
     }
@@ -577,7 +509,6 @@ const AiAssistantPage = () => {
     if (isListening) {
       recognitionRef.current.stop();
     } else {
-      // Just start listening; do not speak here to avoid echo
       recognitionRef.current.start();
     }
   };
@@ -598,7 +529,6 @@ const AiAssistantPage = () => {
       <NavigationBar />
       <div className="ai-assistant-page">
         <div className="ai-assistant-container">
-          {/* Inline language toggle for Assistant page */}
           <div className="ai-lang-bar">
             <span className="ai-lang-title">{t("language")}</span>
             <div className="ai-lang-buttons">
@@ -654,12 +584,16 @@ const AiAssistantPage = () => {
             <button className="control-button" onClick={cancelListening}>
               <X />
             </button>
-            <button className="control-button mic-btn" onClick={toggleListening}>
+            <button
+              className="control-button mic-btn"
+              onClick={toggleListening}
+            >
               <Mic />
             </button>
           </div>
-          {/* *** Capture Fields info *** */}
-          {/* <div className="side-section">
+
+          {/* Captured Fields info */}
+          <div className="side-section">
             {formData.name && (
               <h3 className="side-title">
                 {t("ui.capturedDetailsTitle", {
@@ -735,10 +669,10 @@ const AiAssistantPage = () => {
                 </div>
               )}
             </div>
-          </div> */}
+          </div>
         </div>
 
-        {/* Conversation + Captured summary panel */}
+        {/* Conversation panel */}
         <div className="ai-side-panel">
           <div className="side-section">
             <h3 className="side-title">

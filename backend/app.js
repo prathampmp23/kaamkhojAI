@@ -5,7 +5,6 @@ const multer = require("multer");
 const connectDB = require("./Config/db");
 const authRoutes = require("./routes/authRoutes");
 const jobRoutes = require("./routes/jobRoutes");
-const geminiRoutes = require("./routes/geminiRoutes");
 const voiceRoutes = require("./routes/voiceRoutes");
 const path = require("path");
 
@@ -51,7 +50,6 @@ const upload = multer({
 
 // --- API Routes ---
 app.use("/api/auth", authRoutes);
-app.use("/api/gemini", geminiRoutes);
 app.use("/api/voice", voiceRoutes);
 app.use("/api/jobs", jobRoutes);
 

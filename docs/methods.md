@@ -50,8 +50,8 @@ Returns up to five jobs in each stage.
 - **Voice Locale:** Prompts and speech synth use `en-IN`, `hi-IN`, `mr-IN`; recognition configured per language.
 
 ## Optional LLM Assistance
-- **Endpoint:** `POST /api/gemini/chat`.
-- **Model Use:** `@google/generative-ai` with language-specific system prompts to guide profile collection.
+- **Endpoint:** `POST /validate-with-ai`.
+- **Model Use:** `Meta Llama 3.3 70B` with language-specific system prompts to guide profile collection.
 - **Resilience:** Fallback message when the LLM is unavailable; primary data collection relies on deterministic extractors.
 
 ## Data Models
@@ -68,6 +68,6 @@ Returns up to five jobs in each stage.
 - Rule-based recommendations (no semantic matching); limited update/delete APIs for jobs; reliance on browser speech APIs.
 
 ## Reproducibility Notes
-- Backend requires `MONGO_URI`, `JWT_SECRET`,`GEMINI_API_KEY`.
+- Backend requires `MONGO_URI`, `JWT_SECRET`,`OPENROUTER_API_KEY`.
 - CORS allowlist includes localhost 5173 and the deployed frontend.
 - Frontend selects backend via hostname in `src/environment.js`.
