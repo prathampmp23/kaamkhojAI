@@ -1,6 +1,23 @@
 const Job = require('../models/job');
 const User = require('../models/user');
 const AuthUser = require('../models/authUser');
+const mongoose = require('mongoose');
+
+// Treat legacy jobs that have no `status` field as active.
+const activeStatusQuery = {
+  $or: [{ status: 'active' }, { status: { $exists: false } }, { status: null }],
+};
+
+const withActiveStatus = (extra = {}) => ({ $and: [activeStatusQuery, extra] });
+
+const parseObjectIdList = (value) => {
+  if (!value || typeof value !== 'string') return [];
+  return value
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => /^[a-fA-F0-9]{24}$/.test(s))
+    .map((s) => new mongoose.Types.ObjectId(s));
+};
 
 // Helper: Calculate distance between two coordinates (Haversine formula)
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -166,7 +183,10 @@ exports.getPublicJobs = async (req, res) => {
   try {
     console.log('[DEBUG getPublicJobs] Called');
     
-    const { lat, lon, limit = 20 } = req.query;
+    const { lat, lon, limit = 20, exclude = '' } = req.query;
+    const excludeIds = parseObjectIdList(exclude);
+    const excludeSet = new Set(excludeIds.map((id) => id.toString()));
+    const pageLimit = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
     
     let jobs = [];
     
@@ -176,14 +196,16 @@ exports.getPublicJobs = async (req, res) => {
       
       console.log('[DEBUG getPublicJobs] Location provided:', { latitude, longitude });
       
-      let allJobs = await Job.find({ status: 'active' });
+      let allJobs = await Job.find(activeStatusQuery);
       
       if (allJobs.length === 0) {
         console.log('[DEBUG getPublicJobs] No active jobs found, fetching all jobs');
         allJobs = await Job.find({});
       }
       
+      const nearTarget = Math.floor(pageLimit / 2);
       jobs = allJobs
+        .filter((job) => !excludeSet.has(job._id.toString()))
         .map(job => {
           const jobCoords = parseLocation(job.location);
           if (jobCoords) {
@@ -196,19 +218,23 @@ exports.getPublicJobs = async (req, res) => {
           return { ...job.toObject(), distance: 9999 };
         })
         .sort((a, b) => a.distance - b.distance)
-        .slice(0, Math.floor(limit / 2));
+        .slice(0, nearTarget);
+
+      jobs.forEach((job) => excludeSet.add(job._id.toString()));
     }
     
-    const remainingLimit = parseInt(limit) - jobs.length;
+    const remainingLimit = pageLimit - jobs.length;
+    const excludeForAgg = Array.from(excludeSet).map((s) => new mongoose.Types.ObjectId(s));
     
     let randomJobs = await Job.aggregate([
-      { $match: { status: 'active' } },
+      { $match: withActiveStatus({ _id: { $nin: excludeForAgg } }) },
       { $sample: { size: remainingLimit } }
     ]);
     
     if (randomJobs.length === 0) {
       console.log('[DEBUG getPublicJobs] No active jobs for random sampling, using all jobs');
       randomJobs = await Job.aggregate([
+        { $match: { _id: { $nin: excludeForAgg } } },
         { $sample: { size: remainingLimit } }
       ]);
     }
@@ -218,11 +244,21 @@ exports.getPublicJobs = async (req, res) => {
     
     console.log('[DEBUG getPublicJobs] Returning', jobs.length, 'jobs');
     
+    // Has more? (based on remaining candidates excluding passed-in exclude ids)
+    const remainingCount = await Job.countDocuments(
+      withActiveStatus({ _id: { $nin: excludeIds } })
+    );
+    const fallbackRemainingCount = remainingCount === 0
+      ? await Job.countDocuments({ _id: { $nin: excludeIds } })
+      : remainingCount;
+    const hasMore = fallbackRemainingCount > jobs.length;
+
     return res.status(200).json({
       success: true,
       count: jobs.length,
       jobs,
       mode: 'public'
+      ,hasMore
     });
     
   } catch (error) {
@@ -260,7 +296,10 @@ exports.getRecommendedJobs = async (req, res) => {
     }
     
     const profileId = authUser.profileId;
-    const { forceRefresh = false } = req.query;
+    const { forceRefresh = false, limit = 20, exclude = '' } = req.query;
+    const excludeIds = parseObjectIdList(exclude);
+    const excludeSet = new Set(excludeIds.map((id) => id.toString()));
+    const pageLimit = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
     
     const worker = await User.findById(profileId);
     
@@ -291,7 +330,7 @@ exports.getRecommendedJobs = async (req, res) => {
     if (needsRecompute) {
       console.log(`[DEBUG getRecommendedJobs] Recomputing recommendations for worker ${profileId}`);
       
-      let allJobs = await Job.find({ status: 'active' });
+      let allJobs = await Job.find(activeStatusQuery);
       
       if (allJobs.length === 0) {
         console.log('[DEBUG getRecommendedJobs] No active jobs found, using all jobs');
@@ -353,16 +392,26 @@ exports.getRecommendedJobs = async (req, res) => {
     }
     
     console.log(`[DEBUG getRecommendedJobs] Returning ${recommendedJobs.length} recommended + ${otherJobs.length} other jobs`);
+
+    // Pagination by exclusion (keeps existing response shape)
+    const combined = [...recommendedJobs, ...otherJobs];
+    const remainingCombined = combined.filter((job) => !excludeSet.has(job._id.toString()));
+    const pageCombined = remainingCombined.slice(0, pageLimit);
+    const pageIds = new Set(pageCombined.map((j) => j._id.toString()));
+    const pagedRecommendedJobs = recommendedJobs.filter((job) => pageIds.has(job._id.toString()));
+    const pagedOtherJobs = otherJobs.filter((job) => pageIds.has(job._id.toString()));
+    const hasMore = remainingCombined.length > pageCombined.length;
     
     return res.status(200).json({
       success: true,
-      count: recommendedJobs.length + otherJobs.length,
-      recommendedJobs,  // Exact category matches
-      otherJobs,        // Related/similar jobs
-      jobs: [...recommendedJobs, ...otherJobs], // All jobs combined (for backward compatibility)
+      count: pageCombined.length,
+      recommendedJobs: pagedRecommendedJobs,  // Exact category matches
+      otherJobs: pagedOtherJobs,              // Related/similar jobs
+      jobs: pageCombined,                     // Page combined (for backward compatibility)
       mode: 'recommended',
       cached: !needsRecompute,
-      lastUpdated: worker.recommendationsLastUpdated
+      lastUpdated: worker.recommendationsLastUpdated,
+      hasMore
     });
     
   } catch (error) {
@@ -391,7 +440,10 @@ exports.getNearbyJobs = async (req, res) => {
       return exports.getPublicJobs(req, res);
     }
     
-    const { limit = 20 } = req.query;
+    const { limit = 20, exclude = '' } = req.query;
+    const excludeIds = parseObjectIdList(exclude);
+    const excludeSet = new Set(excludeIds.map((id) => id.toString()));
+    const pageLimit = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
     
     const worker = await User.findById(authUser.profileId);
     
@@ -408,14 +460,15 @@ exports.getNearbyJobs = async (req, res) => {
     if (workerCoords) {
       console.log('[DEBUG getNearbyJobs] Using worker coordinates:', workerCoords);
       
-      let allJobs = await Job.find({ status: 'active' });
+      let allJobs = await Job.find(activeStatusQuery);
       
       if (allJobs.length === 0) {
         console.log('[DEBUG getNearbyJobs] No active jobs found, using all jobs');
         allJobs = await Job.find({});
       }
       
-      jobs = allJobs
+      const ranked = allJobs
+        .filter((job) => !excludeSet.has(job._id.toString()))
         .map(job => {
           const jobCoords = parseLocation(job.location);
           if (jobCoords) {
@@ -427,20 +480,35 @@ exports.getNearbyJobs = async (req, res) => {
           }
           return { ...job.toObject(), distance: 9999 };
         })
-        .sort((a, b) => a.distance - b.distance)
-        .slice(0, parseInt(limit));
+        .sort((a, b) => a.distance - b.distance);
+
+      jobs = ranked.slice(0, pageLimit);
+      const hasMore = ranked.length > jobs.length;
+
+      console.log('[DEBUG getNearbyJobs] Returning', jobs.length, 'jobs');
+      
+      return res.status(200).json({
+        success: true,
+        count: jobs.length,
+        jobs,
+        mode: 'nearby',
+        hasMore
+      });
     } else {
       console.log('[DEBUG getNearbyJobs] No coordinates, using random jobs');
+
+      const excludeForAgg = excludeIds;
       
       let randomJobs = await Job.aggregate([
-        { $match: { status: 'active' } },
-        { $sample: { size: parseInt(limit) } }
+        { $match: withActiveStatus({ _id: { $nin: excludeForAgg } }) },
+        { $sample: { size: pageLimit } }
       ]);
       
       if (randomJobs.length === 0) {
         console.log('[DEBUG getNearbyJobs] No active jobs for random sampling, using all jobs');
         randomJobs = await Job.aggregate([
-          { $sample: { size: parseInt(limit) } }
+          { $match: { _id: { $nin: excludeForAgg } } },
+          { $sample: { size: pageLimit } }
         ]);
       }
       
@@ -448,12 +516,21 @@ exports.getNearbyJobs = async (req, res) => {
     }
     
     console.log('[DEBUG getNearbyJobs] Returning', jobs.length, 'jobs');
+
+    const remainingCount = await Job.countDocuments(
+      withActiveStatus({ _id: { $nin: excludeIds } })
+    );
+    const fallbackRemainingCount = remainingCount === 0
+      ? await Job.countDocuments({ _id: { $nin: excludeIds } })
+      : remainingCount;
+    const hasMore = fallbackRemainingCount > jobs.length;
     
     return res.status(200).json({
       success: true,
       count: jobs.length,
       jobs,
-      mode: 'nearby'
+      mode: 'nearby',
+      hasMore
     });
     
   } catch (error) {

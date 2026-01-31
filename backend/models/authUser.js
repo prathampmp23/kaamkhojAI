@@ -4,23 +4,32 @@ const bcrypt = require('bcryptjs');
 const authUserSchema = new mongoose.Schema({
   username: {
     type: String,
-    required: true,
+    required: false,
     unique: true,
+    sparse: true,
     trim: true,
     minlength: 3
   },
   email: {
     type: String,
-    required: true,
+    required: false,
     unique: true,
+    sparse: true,
     trim: true,
     lowercase: true,
     match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address']
   },
+  phone: {
+    type: String,
+    required: false,
+    unique: true,
+    sparse: true,
+    trim: true
+  },
   password: {
     type: String,
     required: true,
-    minlength: 6
+    minlength: 4
   },
   profileCompleted: {
     type: Boolean,
@@ -30,6 +39,11 @@ const authUserSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     default: null
+  },
+  role: {
+    type: String,
+    enum: ['seeker', 'giver'],
+    default: 'seeker'
   },
   createdAt: {
     type: Date,

@@ -157,12 +157,12 @@ video {
   border-radius: 50%;
   position: relative;
   top: 15px;
-  box-shadow: 0 0 60px rgb(37, 80, 253), 0 0 100px rgba(118, 75, 162, 0.4),
-    inset 0 0 60px rgba(255, 255, 255, 0.2);
-  transition: all 0.4s ease;
+  box-shadow: 0 0 30px rgb(37, 80, 253), 0 0 100px rgba(118, 75, 162, 0.4),
+    inset 0 0 30px rgba(255, 255, 255, 0.2);
+  transition: all 0.1s ease;
   overflow: hidden;
   object-fit: cover;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
 .voice-orb::before {

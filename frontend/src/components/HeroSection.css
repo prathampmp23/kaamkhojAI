@@ -4,12 +4,11 @@
   background-image: url("/images/HeroImage.png");
   background-size: cover;
   background-position: center;
-  height: 730px;
+  min-height: 720px;
   display: flex;
   align-items: center;
-  color: black;
+  color: #0f172a;
   text-align: center;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .hero-overlay {
@@ -18,7 +17,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(rgba(0, 85, 255, 0.887), rgba(255, 255, 255, 0.398));
+  background: rgba(255, 255, 255, 0.82);
   z-index: 1;
 }
 
@@ -31,17 +30,17 @@
 }
 
 .hero-title {
-  font-size: 4.5rem;
-  font-weight: 700;
-  margin-bottom: 15px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  font-size: 3.6rem;
+  font-weight: 800;
+  margin-bottom: 14px;
+  color: #0f172a;
 }
 
 .hero-subtitle {
-  font-size: 1.5rem;
-  margin-bottom: 30px;
-  color: rgb(12, 12, 12);
-  text-shadow: 0 1px 2px rgba(34, 34, 34, 0.2);
+  font-size: 1.15rem;
+  margin-bottom: 22px;
+  color: #5f6368;
+  line-height: 1.6;
 }
 
 .search-box {
@@ -49,7 +48,7 @@
   margin-bottom: 20px;
   border-radius: 50px;
   overflow: hidden;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;
@@ -64,8 +63,8 @@
 }
 
 .search-button {
-  background-color: #2552fe;
-  color: black;
+  background-color: #1a73e8;
+  color: #ffffff;
   border: none;
   padding: 0 25px;
   font-size: 1.1rem;
@@ -75,7 +74,7 @@
 }
 
 .search-button:hover {
-  background-color: #004494;
+  background-color: #1558b0;
 }
 
 .search-button i {
@@ -89,8 +88,8 @@
   align-items: center;
   gap: 10px;
   margin-top: 20px;
-  color: rgba(31, 31, 31, 0.9);
-  font-weight: bold;
+  color: #5f6368;
+  font-weight: 600;
 }
 
 .popular-tags {
@@ -101,18 +100,20 @@
 }
 
 .tag {
-  background-color: rgba(255, 255, 255, 0.41);
-  padding: 5px 15px;
-  border-radius: 20px;
+  background-color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 16px;
   font-size: 0.9rem;
-  color: rgb(27, 27, 27);
+  color: #1f2933;
   text-decoration: none;
-  transition: all 0.2s;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
 }
 
 .tag:hover {
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: #eef4ff;
   transform: translateY(-2px);
+  border-color: #dbe7ff;
 }
 
 /* Responsive Adjustments */

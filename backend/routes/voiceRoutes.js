@@ -343,4 +343,91 @@ router.post("/validate-with-ai", async (req, res) => {
   }
 });
 
+// New endpoint: Answer job-related questions using stored job data
+router.post("/answer-job-question", async (req, res) => {
+  try {
+    const { question, jobs, language, profile } = req.body;
+
+    if (!question || !jobs) {
+      return res.status(400).json({ 
+        success: false, 
+        answer: "Question and jobs data are required" 
+      });
+    }
+
+    // Create context from jobs data
+    const jobsContext = jobs.map((job, idx) => {
+      return `Job ${idx + 1}:
+- Title: ${job.jobName || job.title || 'Not specified'}
+- Company: ${job.company || 'Not specified'}
+- Salary: ${job.salary || 'Not specified'}
+- Location: ${job.location || 'Not specified'}
+- Shift: ${job.shift_time || 'Not specified'}
+- Experience Required: ${job.experience_required || 'Not specified'}
+- Description: ${job.description || 'Not specified'}`;
+    }).join('\n\n');
+
+    const systemPrompt = `You are a helpful job assistant for illiterate workers. 
+Answer questions about jobs in simple, clear language.
+
+User Profile:
+- Name: ${profile.name}
+- Job Looking For: ${profile.job_title}
+- Experience: ${profile.experience} years
+- Salary Expectation: ${profile.salary_expectation}
+- Preferred Shift: ${profile.shift_time}
+
+Available Jobs:
+${jobsContext}
+
+Rules:
+1. Answer in ${language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English'}
+2. Use simple, conversational language
+3. If asked about a specific job, mention job number and details
+4. If asked which job is best, recommend based on user's profile
+5. If asked about salary, shift, location, etc., provide accurate info from the jobs
+6. Be encouraging and helpful
+7. Keep answers brief and clear
+
+User Question: "${question}"`;
+
+    const response = await fetch("http://localhost:11434/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "llama3.2",
+        prompt: systemPrompt,
+        stream: false,
+        options: {
+          temperature: 0.7,
+          max_tokens: 300,
+        },
+      }),
+    });
+
+    const data = await response.json();
+    const answer = data.response?.trim() || "I couldn't generate an answer.";
+
+    res.json({
+      success: true,
+      answer: answer,
+    });
+
+  } catch (error) {
+    console.error("Job Q&A error:", error);
+    
+    // Fallback answer
+    const fallbackAnswers = {
+      hi: "क्षमा करें, मैं अभी आपके सवाल का जवाब नहीं दे पा रहा हूँ। कृपया फिर से कोशिश करें।",
+      mr: "माफ करा, मी सध्या तुमच्या प्रश्नाचे उत्तर देऊ शकत नाही. कृपया पुन्हा प्रयत्न करा.",
+      en: "Sorry, I couldn't answer your question right now. Please try again."
+    };
+
+    res.json({
+      success: false,
+      answer: fallbackAnswers[req.body.language] || fallbackAnswers.en,
+    });
+  }
+});
+
 module.exports = router;

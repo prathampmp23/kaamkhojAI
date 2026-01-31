@@ -6,6 +6,7 @@ import { X, Mic } from "lucide-react";
 import NavigationBar from "../components/NavigationBar";
 import axios from "axios";
 import server from "../environment";
+import { useAuthContext } from "../context/AuthContext";
 
 const flowOrder = [
   "name",
@@ -118,6 +119,8 @@ const AiAssistantPage = () => {
   const navigate = useNavigate();
   const server_url = `${server}`;
 
+  const { setCurrentUser, setIsAuthenticated } = useAuthContext();
+
   const { t, i18n } = useTranslation();
 
   const changeLanguage = (lang) => {
@@ -141,19 +144,98 @@ const AiAssistantPage = () => {
     salary_expectation: "",
   });
   const formDataRef = useRef(formData);
+  
+  // Conversation mode state
+  const [conversationMode, setConversationMode] = useState(false);
+  const [storedJobs, setStoredJobs] = useState([]);
+  const conversationModeRef = useRef(false);
 
   useEffect(() => {
     formDataRef.current = formData;
   }, [formData]);
 
+  useEffect(() => {
+    conversationModeRef.current = conversationMode;
+  }, [conversationMode]);
+
   const [currentFieldIndex, setCurrentFieldIndex] = useState(0);
   const currentFieldIndexRef = useRef(0);
   const [retryCounts, setRetryCounts] = useState({});
   const recognitionRef = useRef(null);
-  const [userName] = useState("User");
+  const [userName, setUserName] = useState("User");
   const processingLockRef = useRef(false);
   const [voicesLoaded, setVoicesLoaded] = useState(false);
   const isActiveRef = useRef(true);
+
+  const [authReady, setAuthReady] = useState(() => {
+    try {
+      return !!localStorage.getItem("token");
+    } catch {
+      return false;
+    }
+  });
+
+  const [authGate, setAuthGate] = useState({
+    phone: "",
+    pin: "",
+    step: "check", // check | login | register
+    loading: false,
+    error: "",
+    exists: null,
+    profileName: null,
+  });
+
+  const normalizePhoneClient = (value) => {
+    const digits = String(value || "").replace(/\D/g, "");
+    const normalized = digits.length > 10 ? digits.slice(-10) : digits;
+    if (normalized.length !== 10) return null;
+    return normalized;
+  };
+
+  const authLogin = async ({ phone, pin }) => {
+    const res = await fetch(`${server_url}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, password: pin }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Login failed");
+
+    const userData = data.user;
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("isLoggedIn", true);
+    localStorage.setItem("user", JSON.stringify(userData));
+    setCurrentUser(userData);
+    setIsAuthenticated(true);
+
+    return userData;
+  };
+
+  const authRegister = async ({ phone, pin }) => {
+    const res = await fetch(`${server_url}/api/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, password: pin, role: "seeker" }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Registration failed");
+    return true;
+  };
+
+  const fetchAndSetProfileName = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      const profileRes = await fetch(`${server_url}/api/auth/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const profileData = await profileRes.json();
+      const name = profileRes.ok ? profileData?.profile?.name : null;
+      if (name) setUserName(name);
+    } catch (e) {
+      console.error("Profile name fetch error:", e);
+    }
+  };
 
   // Cleanup on unmount
   useEffect(() => {
@@ -253,6 +335,7 @@ const AiAssistantPage = () => {
   };
 
   useEffect(() => {
+    if (!authReady) return;
     currentFieldIndexRef.current = 0;
     setCurrentFieldIndex(0);
 
@@ -302,11 +385,53 @@ const AiAssistantPage = () => {
     }
   }, [userName, i18n.language, t]);
 
+  useEffect(() => {
+    if (!authReady) return;
+    fetchAndSetProfileName();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authReady]);
+
   const handleTranscript = async (text) => {
     if (!text || processingLockRef.current) return;
     processingLockRef.current = true;
 
     setMessages((prev) => [...prev, { sender: "user", text }]);
+
+    // Check if in conversation mode
+    if (conversationModeRef.current) {
+      try {
+        // Call backend to answer based on stored jobs
+        const res = await axios.post(`${server_url}/api/voice/answer-job-question`, {
+          question: text,
+          jobs: storedJobs,
+          language: i18n.language,
+          profile: formDataRef.current,
+        });
+
+        const { answer } = res.data;
+        
+        speak(answer, i18n.language);
+        setMessages((prev) => [
+          ...prev,
+          { sender: "ai", text: answer, prompt: "" },
+        ]);
+      } catch (error) {
+        console.error("Job Q&A error:", error);
+        const fallbackAnswer = i18n.language === "hi" 
+          ? "क्षमा करें, मैं आपके सवाल का जवाब नहीं दे पाया।"
+          : i18n.language === "mr"
+          ? "माफ करा, मी तुमच्या प्रश्नाचे उत्तर देऊ शकत नाही."
+          : "Sorry, I couldn't answer your question.";
+        
+        speak(fallbackAnswer, i18n.language);
+        setMessages((prev) => [
+          ...prev,
+          { sender: "ai", text: fallbackAnswer, prompt: "" },
+        ]);
+      }
+      processingLockRef.current = false;
+      return;
+    }
 
     const field = getCurrentField();
     const lang = i18n.language;
@@ -389,19 +514,28 @@ const AiAssistantPage = () => {
               }),
             );
 
+            // Store jobs and enter conversation mode
+            setStoredJobs(recommendedJobs || []);
+            setConversationMode(true);
+            conversationModeRef.current = true;
+
             let jobRecommendationSpeech = "";
 
             if (recommendedJobs && recommendedJobs.length > 0) {
-              jobRecommendationSpeech = t("jobRecommendationIntro");
-              recommendedJobs.forEach((job) => {
-                jobRecommendationSpeech += t("jobDetails", {
-                  title: job.jobName || job.title || "",
-                  company: job.company || "",
-                  salary: job.salary || "",
-                });
-              });
+              const jobCount = recommendedJobs.length;
+              const jobTitles = recommendedJobs.slice(0, 3).map(job => job.jobName || job.title).filter(Boolean).join(", ");
+              
+              jobRecommendationSpeech = lang === "hi" 
+                ? `बधाई हो! आपकी प्रोफाइल बन गई है। मैंने ${jobCount} नौकरियां पाईं: ${jobTitles}। अब आप मुझसे इन नौकरियों के बारे में कोई भी सवाल पूछ सकते हैं।`
+                : lang === "mr"
+                ? `अभिनंदन! तुमची प्रोफाईल तयार झाली आहे। मला ${jobCount} नोकऱ्या मिळाल्या: ${jobTitles}. आता तुम्ही या नोकऱ्यांबद्दल कोणताही प्रश्न विचारू शकता।`
+                : `Congratulations! Your profile has been created. I found ${jobCount} jobs: ${jobTitles}. You can now ask me any questions about these jobs.`;
             } else {
-              jobRecommendationSpeech = t("noJobsFoundMessage");
+              jobRecommendationSpeech = lang === "hi"
+                ? "आपकी प्रोफाइल बन गई है, लेकिन अभी कोई नौकरी नहीं मिली। आप मुझसे नौकरी ढूंढने के बारे में पूछ सकते हैं।"
+                : lang === "mr"
+                ? "तुमची प्रोफाईल तयार झाली आहे, पण सध्या कोणतीही नोकरी मिळाली नाही। तुम्ही मला नोकरी शोधण्याबद्दल विचारू शकता।"
+                : "Your profile has been created, but no jobs found yet. You can ask me about finding jobs.";
             }
 
             speak(jobRecommendationSpeech, lang);
@@ -409,16 +543,6 @@ const AiAssistantPage = () => {
               ...prev,
               { sender: "ai", text: jobRecommendationSpeech, prompt: "" },
             ]);
-
-            setTimeout(() => {
-              navigate("/jobs", {
-                state: {
-                  fromProfile: true,
-                  profileId,
-                  recommendedJobs: recommendedJobs || [],
-                },
-              });
-            }, 800);
           } catch (e) {
             console.error("Profile submission error:", e);
             if (e.response) {
@@ -560,10 +684,305 @@ const AiAssistantPage = () => {
             </div>
           </div>
           <div className="window-header"></div>
+
+          {!authReady ? (
+            <div className="side-section" style={{ width: "100%" }}>
+              <h3 className="side-title">
+                {i18n.language === "hi"
+                  ? "पहले अपना फोन नंबर डालें"
+                  : i18n.language === "mr"
+                    ? "आधी फोन नंबर टाका"
+                    : "Enter your phone number first"}
+              </h3>
+              <div className="captured-summary">
+                <div className="summary-row" style={{ gap: 12, alignItems: "center" }}>
+                  <span className="summary-label">
+                    {i18n.language === "hi"
+                      ? "फोन"
+                      : i18n.language === "mr"
+                        ? "फोन"
+                        : "Phone"}
+                    :
+                  </span>
+                  <input
+                    type="text"
+                    value={authGate.phone}
+                    onChange={(e) =>
+                      setAuthGate((p) => ({ ...p, phone: e.target.value, error: "" }))
+                    }
+                    placeholder={
+                      i18n.language === "hi"
+                        ? "10 अंकों का नंबर"
+                        : i18n.language === "mr"
+                          ? "10 अंकी नंबर"
+                          : "10-digit number"
+                    }
+                    style={{
+                      flex: 1,
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      border: "1px solid #e5e7eb",
+                    }}
+                  />
+                </div>
+
+                {authGate.step !== "check" && (
+                  <div className="summary-row" style={{ gap: 12, alignItems: "center" }}>
+                    <span className="summary-label">
+                      {i18n.language === "hi"
+                        ? "PIN"
+                        : i18n.language === "mr"
+                          ? "PIN"
+                          : "PIN"}
+                      :
+                    </span>
+                    <input
+                      type="password"
+                      value={authGate.pin}
+                      onChange={(e) =>
+                        setAuthGate((p) => ({ ...p, pin: e.target.value, error: "" }))
+                      }
+                      placeholder={
+                        i18n.language === "hi"
+                          ? "4 अंकों का PIN"
+                          : i18n.language === "mr"
+                            ? "4 अंकी PIN"
+                            : "4-digit PIN"
+                      }
+                      style={{
+                        flex: 1,
+                        padding: "10px 12px",
+                        borderRadius: 10,
+                        border: "1px solid #e5e7eb",
+                      }}
+                    />
+                  </div>
+                )}
+
+                {authGate.error ? (
+                  <div style={{ color: "#b91c1c", marginTop: 8, fontSize: 14 }}>
+                    {authGate.error}
+                  </div>
+                ) : null}
+
+                <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+                  {authGate.step === "check" ? (
+                    <button
+                      className="control-button mic-btn"
+                      style={{ width: "auto", padding: "10px 14px" }}
+                      disabled={authGate.loading}
+                      onClick={async () => {
+                        const phone = normalizePhoneClient(authGate.phone);
+                        if (!phone) {
+                          setAuthGate((p) => ({
+                            ...p,
+                            error:
+                              i18n.language === "hi"
+                                ? "कृपया सही 10 अंकों का फोन नंबर डालें"
+                                : i18n.language === "mr"
+                                  ? "कृपया योग्य 10 अंकी फोन नंबर टाका"
+                                  : "Please enter a valid 10-digit phone number",
+                          }));
+                          return;
+                        }
+
+                        setAuthGate((p) => ({ ...p, loading: true, error: "" }));
+                        try {
+                          const res = await fetch(`${server_url}/api/auth/check-phone`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ phone }),
+                          });
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.message || "Check failed");
+
+                          if (data.exists) {
+                            setAuthGate((p) => ({
+                              ...p,
+                              exists: true,
+                              profileName: data.profileName || null,
+                              step: "login",
+                              loading: false,
+                            }));
+
+                            if (data.profileName) {
+                              const msg =
+                                i18n.language === "hi"
+                                  ? `यह नंबर ${data.profileName} के नाम पर है। कृपया PIN डालें।`
+                                  : i18n.language === "mr"
+                                    ? `हा नंबर ${data.profileName} साठी आहे. कृपया PIN टाका.`
+                                    : `This number belongs to ${data.profileName}. Please enter your PIN.`;
+                              speak(msg, i18n.language);
+                            }
+                          } else {
+                            setAuthGate((p) => ({
+                              ...p,
+                              exists: false,
+                              profileName: null,
+                              step: "register",
+                              loading: false,
+                            }));
+
+                            const msg =
+                              i18n.language === "hi"
+                                ? "यह नया नंबर है। कृपया 4 अंकों का PIN बनाइए।"
+                                : i18n.language === "mr"
+                                  ? "हा नवीन नंबर आहे. कृपया 4 अंकी PIN तयार करा."
+                                  : "New number. Please create a 4-digit PIN.";
+                            speak(msg, i18n.language);
+                          }
+                        } catch (e) {
+                          setAuthGate((p) => ({ ...p, loading: false, error: e.message }));
+                        }
+                      }}
+                    >
+                      {authGate.loading
+                        ? i18n.language === "hi"
+                          ? "जांच हो रही है..."
+                          : i18n.language === "mr"
+                            ? "तपासत आहे..."
+                            : "Checking..."
+                        : i18n.language === "hi"
+                          ? "आगे बढ़ें"
+                          : i18n.language === "mr"
+                            ? "पुढे जा"
+                            : "Continue"}
+                    </button>
+                  ) : (
+                    <button
+                      className="control-button mic-btn"
+                      style={{ width: "auto", padding: "10px 14px" }}
+                      disabled={authGate.loading}
+                      onClick={async () => {
+                        const phone = normalizePhoneClient(authGate.phone);
+                        if (!phone) {
+                          setAuthGate((p) => ({
+                            ...p,
+                            error:
+                              i18n.language === "hi"
+                                ? "कृपया सही 10 अंकों का फोन नंबर डालें"
+                                : i18n.language === "mr"
+                                  ? "कृपया योग्य 10 अंकी फोन नंबर टाका"
+                                  : "Please enter a valid 10-digit phone number",
+                          }));
+                          return;
+                        }
+                        if (!authGate.pin || authGate.pin.length < 4) {
+                          setAuthGate((p) => ({
+                            ...p,
+                            error:
+                              i18n.language === "hi"
+                                ? "PIN कम से कम 4 अंकों का होना चाहिए"
+                                : i18n.language === "mr"
+                                  ? "PIN किमान 4 अंकांचा असावा"
+                                  : "PIN must be at least 4 digits",
+                          }));
+                          return;
+                        }
+
+                        setAuthGate((p) => ({ ...p, loading: true, error: "" }));
+                        try {
+                          if (authGate.step === "register") {
+                            await authRegister({ phone, pin: authGate.pin });
+                          }
+                          await authLogin({ phone, pin: authGate.pin });
+                          setAuthReady(true);
+                          setAuthGate((p) => ({ ...p, loading: false }));
+
+                          // Friendly voice confirmation after successful login
+                          const nameToSpeak = authGate.profileName;
+                          if (nameToSpeak) {
+                            const msg =
+                              i18n.language === "hi"
+                                ? `स्वागत है ${nameToSpeak}`
+                                : i18n.language === "mr"
+                                  ? `स्वागत आहे ${nameToSpeak}`
+                                  : `Welcome back ${nameToSpeak}`;
+                            speak(msg, i18n.language);
+                            setUserName(nameToSpeak);
+                          }
+                        } catch (e) {
+                          setAuthGate((p) => ({ ...p, loading: false, error: e.message }));
+                        }
+                      }}
+                    >
+                      {authGate.loading
+                        ? i18n.language === "hi"
+                          ? "हो रहा है..."
+                          : i18n.language === "mr"
+                            ? "चालू आहे..."
+                            : "Please wait..."
+                        : authGate.step === "login"
+                          ? i18n.language === "hi"
+                            ? "लॉगिन"
+                            : i18n.language === "mr"
+                              ? "लॉगिन"
+                              : "Login"
+                          : i18n.language === "hi"
+                            ? "खाता बनाएं"
+                            : i18n.language === "mr"
+                              ? "खाते तयार करा"
+                              : "Create account"}
+                    </button>
+                  )}
+
+                  {authGate.step !== "check" ? (
+                    <button
+                      className="control-button"
+                      style={{ width: "auto", padding: "10px 14px" }}
+                      disabled={authGate.loading}
+                      onClick={() =>
+                        setAuthGate({
+                          phone: authGate.phone,
+                          pin: "",
+                          step: "check",
+                          loading: false,
+                          error: "",
+                          exists: null,
+                          profileName: null,
+                        })
+                      }
+                    >
+                      {i18n.language === "hi"
+                        ? "बदलें"
+                        : i18n.language === "mr"
+                          ? "बदला"
+                          : "Change"}
+                    </button>
+                  ) : null}
+                </div>
+
+                {authGate.step === "login" ? (
+                  <div style={{ marginTop: 10, color: "#6b7280", fontSize: 14 }}>
+                    {authGate.profileName
+                      ? i18n.language === "hi"
+                        ? `यह नंबर ${authGate.profileName} के नाम पर है। PIN डालें।`
+                        : i18n.language === "mr"
+                          ? `हा नंबर ${authGate.profileName} साठी आहे. PIN टाका.`
+                          : `This number belongs to ${authGate.profileName}. Enter PIN.`
+                      : i18n.language === "hi"
+                        ? "यह नंबर पहले से है। PIN डालें।"
+                        : i18n.language === "mr"
+                          ? "हा नंबर आधीपासून आहे. PIN टाका."
+                          : "This number already exists. Enter PIN."}
+                  </div>
+                ) : authGate.step === "register" ? (
+                  <div style={{ marginTop: 10, color: "#6b7280", fontSize: 14 }}>
+                    {i18n.language === "hi"
+                      ? "यह नया नंबर है। 4 अंकों का PIN बनाइए और आगे बढ़िए।"
+                      : i18n.language === "mr"
+                        ? "हा नवीन नंबर आहे. 4 अंकी PIN तयार करा आणि पुढे जा."
+                        : "New number. Create a 4-digit PIN to continue."}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <>
           <div className={`sphere ${isListening ? "listening" : ""}`}>
             <video
               className="voice-orb"
-              src="/original-1b477c07d12be3192b67e5ed8aa6da03.mp4"
+              src="/ai-video.mp4"
               autoPlay
               loop
               muted
@@ -677,6 +1096,8 @@ const AiAssistantPage = () => {
               )}
             </div>
           </div>
+            </>
+          )}
         </div>
 
         {/* Conversation panel */}

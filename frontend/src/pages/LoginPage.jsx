@@ -10,7 +10,7 @@ import "./LoginPage.css";
 export default function LoginPage() {
   const { i18n } = useTranslation();
   const [formData, setFormData] = useState({
-    username: "",
+    phone: "",
     password: "",
     rememberMe: false,
   });
@@ -49,10 +49,10 @@ export default function LoginPage() {
     hi: {
       welcomeBack: "वापसी पर स्वागत है",
       enterCredentials: "कृपया अपनी लॉगिन जानकारी दर्ज करें",
-      username: "उपयोगकर्ता नाम",
-      enterUsername: "अपना उपयोगकर्ता नाम दर्ज करें",
-      password: "पासवर्ड",
-      enterPassword: "अपना पासवर्ड दर्ज करें",
+      phone: "फोन नंबर",
+      enterPhone: "10 अंकों का फोन नंबर दर्ज करें",
+      pin: "PIN",
+      enterPin: "अपना PIN दर्ज करें",
       rememberMe: "मुझे याद रखें",
       forgotPassword: "पासवर्ड भूल गए?",
       login: "लॉग इन",
@@ -60,18 +60,19 @@ export default function LoginPage() {
       orLoginWith: "या इसके साथ लॉग इन करें",
       dontHaveAccount: "खाता नहीं है?",
       signUp: "साइन अप",
-      usernameRequired: "उपयोगकर्ता नाम आवश्यक है",
-      passwordRequired: "पासवर्ड आवश्यक है",
-      passwordLength: "पासवर्ड कम से कम 6 अक्षरों का होना चाहिए",
+      phoneRequired: "फोन नंबर आवश्यक है",
+      phoneInvalid: "कृपया सही 10 अंकों का फोन नंबर डालें",
+      pinRequired: "PIN आवश्यक है",
+      pinLength: "PIN कम से कम 4 अंकों का होना चाहिए",
       registrationSuccess: "पंजीकरण सफल! अब आप लॉग इन कर सकते हैं।",
     },
     mr: {
       welcomeBack: "पुन्हा स्वागत आहे",
       enterCredentials: "कृपया लॉगिन माहिती भरा",
-      username: "वापरकर्तानाव",
-      enterUsername: "आपले वापरकर्तानाव भरा",
-      password: "पासवर्ड",
-      enterPassword: "आपला पासवर्ड भरा",
+      phone: "फोन नंबर",
+      enterPhone: "10 अंकी फोन नंबर भरा",
+      pin: "PIN",
+      enterPin: "आपला PIN भरा",
       rememberMe: "मला लक्षात ठेवा",
       forgotPassword: "पासवर्ड विसरलात?",
       login: "लॉगिन",
@@ -79,18 +80,19 @@ export default function LoginPage() {
       orLoginWith: "किंवा याने लॉगिन करा",
       dontHaveAccount: "खाते नाही?",
       signUp: "साइन अप",
-      usernameRequired: "वापरकर्तानाव आवश्यक आहे",
-      passwordRequired: "पासवर्ड आवश्यक आहे",
-      passwordLength: "पासवर्ड किमान 6 अक्षरे असावा",
+      phoneRequired: "फोन नंबर आवश्यक आहे",
+      phoneInvalid: "कृपया योग्य 10 अंकी फोन नंबर टाका",
+      pinRequired: "PIN आवश्यक आहे",
+      pinLength: "PIN किमान 4 अंकांचा असावा",
       registrationSuccess: "नोंदणी यशस्वी! आता आपण लॉगिन करू शकता.",
     },
     en: {
       welcomeBack: "Welcome Back",
       enterCredentials: "Please enter your credentials to login",
-      username: "Username",
-      enterUsername: "Enter your username",
-      password: "Password",
-      enterPassword: "Enter your password",
+      phone: "Phone Number",
+      enterPhone: "Enter 10-digit phone number",
+      pin: "PIN",
+      enterPin: "Enter your PIN",
       rememberMe: "Remember me",
       forgotPassword: "Forgot Password?",
       login: "Login",
@@ -98,9 +100,10 @@ export default function LoginPage() {
       orLoginWith: "or login with",
       dontHaveAccount: "Don't have an account?",
       signUp: "Sign Up",
-      usernameRequired: "Username is required",
-      passwordRequired: "Password is required",
-      passwordLength: "Password must be at least 6 characters",
+      phoneRequired: "Phone number is required",
+      phoneInvalid: "Please enter a valid 10-digit phone number",
+      pinRequired: "PIN is required",
+      pinLength: "PIN must be at least 4 digits",
       registrationSuccess: "Registration successful! You can now log in.",
     },
   };
@@ -147,14 +150,18 @@ export default function LoginPage() {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.username.trim()) {
-      newErrors.username = content[language].usernameRequired;
+    const digits = (formData.phone || "").replace(/\D/g, "");
+    const normalized = digits.length > 10 ? digits.slice(-10) : digits;
+    if (!normalized) {
+      newErrors.phone = content[language].phoneRequired;
+    } else if (normalized.length !== 10) {
+      newErrors.phone = content[language].phoneInvalid;
     }
     
     if (!formData.password) {
-      newErrors.password = content[language].passwordRequired;
-    } else if (formData.password.length < 6) {
-      newErrors.password = content[language].passwordLength;
+      newErrors.password = content[language].pinRequired;
+    } else if (formData.password.length < 4) {
+      newErrors.password = content[language].pinLength;
     }
     
     setErrors(newErrors);
@@ -170,7 +177,7 @@ export default function LoginPage() {
     
     // Use the login function from our custom hook
     login({
-      username: formData.username,
+      phone: formData.phone,
       password: formData.password,
       rememberMe: formData.rememberMe
     });
@@ -202,33 +209,33 @@ export default function LoginPage() {
           
           <form onSubmit={handleSubmit} noValidate>
             <div className="form-group">
-              <label htmlFor="username" className="form-label">
-                {content[language].username}
+              <label htmlFor="phone" className="form-label">
+                {content[language].phone}
               </label>
               <input
-                name="username"
-                id="username"
+                name="phone"
+                id="phone"
                 type="text"
-                placeholder={content[language].enterUsername}
-                className={`form-control ${errors.username ? "is-invalid" : ""}`}
-                value={formData.username}
+                placeholder={content[language].enterPhone}
+                className={`form-control ${errors.phone ? "is-invalid" : ""}`}
+                value={formData.phone}
                 onChange={handleChange}
                 required
               />
-              {errors.username && (
-                <span className="error-message">{errors.username}</span>
+              {errors.phone && (
+                <span className="error-message">{errors.phone}</span>
               )}
             </div>
             
             <div className="form-group">
               <label htmlFor="password" className="form-label">
-                {content[language].password}
+                {content[language].pin}
               </label>
               <input
                 name="password"
                 id="password"
                 type="password"
-                placeholder={content[language].enterPassword}
+                placeholder={content[language].enterPin}
                 className={`form-control ${errors.password ? "is-invalid" : ""}`}
                 value={formData.password}
                 onChange={handleChange}

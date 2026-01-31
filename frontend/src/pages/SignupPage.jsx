@@ -9,10 +9,11 @@ import "./SignupPage.css";
 export default function SignupPage() {
   const { i18n } = useTranslation();
   const [formData, setFormData] = useState({
-    username: "",
+    phone: "",
     email: "",
     password: "",
     confirmPassword: "",
+    role: "seeker",
     agreeTerms: false
   });
   const [errors, setErrors] = useState({});
@@ -38,14 +39,17 @@ export default function SignupPage() {
     hi: {
       createAccount: "खाता बनाएँ",
       joinKaamkhoj: "नौकरी के अवसर खोजने के लिए कामखोज से जुड़ें",
-      username: "उपयोगकर्ता नाम",
-      chooseUsername: "उपयोगकर्ता नाम चुनें",
-      email: "ईमेल",
-      enterEmail: "अपना ईमेल दर्ज करें",
-      password: "पासवर्ड",
-      createPassword: "पासवर्ड बनाएँ",
-      confirmPassword: "पासवर्ड की पुष्टि करें",
-      confirmYourPassword: "अपने पासवर्ड की पुष्टि करें",
+      roleLabel: "आप कौन हैं?",
+      roleSeeker: "नौकरी खोजने वाला",
+      roleGiver: "नौकरी देने वाला",
+      phone: "फोन नंबर",
+      enterPhone: "10 अंकों का फोन नंबर दर्ज करें",
+      email: "ईमेल (वैकल्पिक)",
+      enterEmail: "अपना ईमेल दर्ज करें (वैकल्पिक)",
+      pin: "PIN",
+      createPin: "4 अंकों का PIN बनाएँ",
+      confirmPin: "PIN की पुष्टि करें",
+      confirmYourPin: "अपने PIN की पुष्टि करें",
       agreeTerms: "मैं नियम और शर्तों और गोपनीयता नीति से सहमत हूँ",
       termsAndConditions: "नियम और शर्तें",
       privacyPolicy: "गोपनीयता नीति",
@@ -53,26 +57,28 @@ export default function SignupPage() {
       creatingAccount: "खाता बनाया जा रहा है...",
       alreadyHaveAccount: "पहले से ही खाता है?",
       login: "लॉग इन",
-      usernameRequired: "उपयोगकर्ता नाम आवश्यक है",
-      usernameLength: "उपयोगकर्ता नाम कम से कम 3 अक्षरों का होना चाहिए",
-      emailRequired: "ईमेल आवश्यक है",
+      phoneRequired: "फोन नंबर आवश्यक है",
+      phoneInvalid: "कृपया सही 10 अंकों का फोन नंबर डालें",
       invalidEmail: "ईमेल पता अमान्य है",
-      passwordRequired: "पासवर्ड आवश्यक है",
-      passwordLength: "पासवर्ड कम से कम 6 अक्षरों का होना चाहिए",
-      passwordsDoNotMatch: "पासवर्ड मेल नहीं खाते",
+      pinRequired: "PIN आवश्यक है",
+      pinLength: "PIN कम से कम 4 अंकों का होना चाहिए",
+      pinsDoNotMatch: "PIN मेल नहीं खाते",
       mustAgreeTerms: "आपको नियम और शर्तों से सहमत होना चाहिए"
     },
     mr: {
       createAccount: "खाते तयार करा",
       joinKaamkhoj: "योग्य नोकरी शोधण्यासाठी KaamKhoj मध्ये सामील व्हा",
-      username: "वापरकर्तानाव",
-      chooseUsername: "वापरकर्तानाव निवडा",
-      email: "ईमेल",
-      enterEmail: "आपला ईमेल भरा",
-      password: "पासवर्ड",
-      createPassword: "पासवर्ड तयार करा",
-      confirmPassword: "पासवर्डची पुष्टी करा",
-      confirmYourPassword: "आपला पासवर्ड पुष्टी करा",
+      roleLabel: "आपण कोण आहात?",
+      roleSeeker: "नोकरी शोधणारा",
+      roleGiver: "नोकरी देणारा",
+      phone: "फोन नंबर",
+      enterPhone: "10 अंकी फोन नंबर भरा",
+      email: "ईमेल (ऐच्छिक)",
+      enterEmail: "आपला ईमेल भरा (ऐच्छिक)",
+      pin: "PIN",
+      createPin: "4 अंकी PIN तयार करा",
+      confirmPin: "PIN ची पुष्टी करा",
+      confirmYourPin: "आपला PIN पुष्टी करा",
       agreeTerms: "मी अटी व शर्ती आणि गोपनीयता धोरणास सहमत आहे",
       termsAndConditions: "अटी व शर्ती",
       privacyPolicy: "गोपनीयता धोरण",
@@ -80,26 +86,28 @@ export default function SignupPage() {
       creatingAccount: "खाते तयार होत आहे...",
       alreadyHaveAccount: "आधीच खाते आहे?",
       login: "लॉगिन",
-      usernameRequired: "वापरकर्तानाव आवश्यक आहे",
-      usernameLength: "वापरकर्तानाव किमान 3 अक्षरे असावे",
-      emailRequired: "ईमेल आवश्यक आहे",
+      phoneRequired: "फोन नंबर आवश्यक आहे",
+      phoneInvalid: "कृपया योग्य 10 अंकी फोन नंबर टाका",
       invalidEmail: "ईमेल पत्ता अवैध आहे",
-      passwordRequired: "पासवर्ड आवश्यक आहे",
-      passwordLength: "पासवर्ड किमान 6 अक्षरे असावा",
-      passwordsDoNotMatch: "पासवर्ड जुळत नाहीत",
+      pinRequired: "PIN आवश्यक आहे",
+      pinLength: "PIN किमान 4 अंकांचा असावा",
+      pinsDoNotMatch: "PIN जुळत नाहीत",
       mustAgreeTerms: "आपण अटी व शर्ती मान्य करणे आवश्यक आहे"
     },
     en: {
       createAccount: "Create Account",
       joinKaamkhoj: "Join KaamKhoj to find the perfect job opportunity",
-      username: "Username",
-      chooseUsername: "Choose a username",
-      email: "Email",
-      enterEmail: "Enter your email",
-      password: "Password",
-      createPassword: "Create a password",
-      confirmPassword: "Confirm Password",
-      confirmYourPassword: "Confirm your password",
+      roleLabel: "I am a",
+      roleSeeker: "Job seeker",
+      roleGiver: "Job giver",
+      phone: "Phone Number",
+      enterPhone: "Enter 10-digit phone number",
+      email: "Email (optional)",
+      enterEmail: "Enter your email (optional)",
+      pin: "PIN",
+      createPin: "Create a 4-digit PIN",
+      confirmPin: "Confirm PIN",
+      confirmYourPin: "Confirm your PIN",
       agreeTerms: "I agree to the Terms and Conditions and Privacy Policy",
       termsAndConditions: "Terms and Conditions",
       privacyPolicy: "Privacy Policy",
@@ -107,13 +115,12 @@ export default function SignupPage() {
       creatingAccount: "Creating Account...",
       alreadyHaveAccount: "Already have an account?",
       login: "Login",
-      usernameRequired: "Username is required",
-      usernameLength: "Username must be at least 3 characters",
-      emailRequired: "Email is required",
+      phoneRequired: "Phone number is required",
+      phoneInvalid: "Please enter a valid 10-digit phone number",
       invalidEmail: "Email address is invalid",
-      passwordRequired: "Password is required",
-      passwordLength: "Password must be at least 6 characters",
-      passwordsDoNotMatch: "Passwords do not match",
+      pinRequired: "PIN is required",
+      pinLength: "PIN must be at least 4 digits",
+      pinsDoNotMatch: "PINs do not match",
       mustAgreeTerms: "You must agree to the terms and conditions"
     }
   };
@@ -159,28 +166,28 @@ export default function SignupPage() {
 
   const validateForm = () => {
     const newErrors = {};
-    
-    if (!formData.username.trim()) {
-      newErrors.username = content[language].usernameRequired;
-    } else if (formData.username.length < 3) {
-      newErrors.username = content[language].usernameLength;
+
+    const digits = (formData.phone || "").replace(/\D/g, "");
+    const normalized = digits.length > 10 ? digits.slice(-10) : digits;
+    if (!normalized) {
+      newErrors.phone = content[language].phoneRequired;
+    } else if (normalized.length !== 10) {
+      newErrors.phone = content[language].phoneInvalid;
     }
     
-    if (!formData.email.trim()) {
-      newErrors.email = content[language].emailRequired;
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = content[language].invalidEmail;
     }
     
     if (!formData.password) {
-      newErrors.password = content[language].passwordRequired;
-    } else if (formData.password.length < 6) {
-      newErrors.password = content[language].passwordLength;
+      newErrors.password = content[language].pinRequired;
+    } else if (formData.password.length < 4) {
+      newErrors.password = content[language].pinLength;
     }
-    
-    // if (formData.password !== formData.confirmPassword) {
-    //   newErrors.confirmPassword = content[language].passwordsDoNotMatch;
-    // }
+
+    if (formData.confirmPassword && formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = content[language].pinsDoNotMatch;
+    }
     
     if (!formData.agreeTerms) {
       newErrors.agreeTerms = content[language].mustAgreeTerms;
@@ -199,9 +206,10 @@ export default function SignupPage() {
     
     // Use the register function from our custom hook
     register({
-      username: formData.username,
-      email: formData.email,
-      password: formData.password
+      phone: formData.phone,
+      email: formData.email || undefined,
+      password: formData.password,
+      role: formData.role,
     });
   };
 
@@ -215,6 +223,30 @@ export default function SignupPage() {
             <h1 className="signup-title">{content[language].createAccount}</h1>
             <p className="signup-subtitle">{content[language].joinKaamkhoj}</p>
           </div>
+
+          <div className="language-buttons" style={{ marginBottom: 10 }}>
+            <button
+              type="button"
+              className={language === "en" ? "active" : ""}
+              onClick={() => handleLanguageChange("en")}
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              className={language === "hi" ? "active" : ""}
+              onClick={() => handleLanguageChange("hi")}
+            >
+              HI
+            </button>
+            <button
+              type="button"
+              className={language === "mr" ? "active" : ""}
+              onClick={() => handleLanguageChange("mr")}
+            >
+              MR
+            </button>
+          </div>
           
           {errors.general && (
             <div className="alert alert-danger" role="alert">
@@ -224,21 +256,21 @@ export default function SignupPage() {
           
           <form onSubmit={handleSubmit} noValidate>
             <div className="form-group">
-              <label htmlFor="username" className="form-label">
-                {content[language].username}
+              <label htmlFor="phone" className="form-label">
+                {content[language].phone}
               </label>
               <input
-                name="username"
-                id="username"
+                name="phone"
+                id="phone"
                 type="text"
-                placeholder={content[language].chooseUsername}
-                className={`form-control ${errors.username ? "is-invalid" : ""}`}
-                value={formData.username}
+                placeholder={content[language].enterPhone}
+                className={`form-control ${errors.phone ? "is-invalid" : ""}`}
+                value={formData.phone}
                 onChange={handleChange}
                 required
               />
-              {errors.username && (
-                <span className="error-message">{errors.username}</span>
+              {errors.phone && (
+                <span className="error-message">{errors.phone}</span>
               )}
             </div>
             
@@ -254,22 +286,37 @@ export default function SignupPage() {
                 className={`form-control ${errors.email ? "is-invalid" : ""}`}
                 value={formData.email}
                 onChange={handleChange}
-                required
               />
               {errors.email && (
                 <span className="error-message">{errors.email}</span>
               )}
             </div>
+
+            <div className="form-group">
+              <label htmlFor="role" className="form-label">
+                {content[language].roleLabel}
+              </label>
+              <select
+                name="role"
+                id="role"
+                className="form-control"
+                value={formData.role}
+                onChange={handleChange}
+              >
+                <option value="seeker">{content[language].roleSeeker}</option>
+                <option value="giver">{content[language].roleGiver}</option>
+              </select>
+            </div>
             
             <div className="form-group">
               <label htmlFor="password" className="form-label">
-                {content[language].password}
+                {content[language].pin}
               </label>
               <input
                 name="password"
                 id="password"
                 type="password"
-                placeholder={content[language].createPassword}
+                placeholder={content[language].createPin}
                 className={`form-control ${errors.password ? "is-invalid" : ""}`}
                 value={formData.password}
                 onChange={handleChange}

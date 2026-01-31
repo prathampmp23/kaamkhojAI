@@ -78,6 +78,12 @@ const jobSchema = new mongoose.Schema(
       type: String,
       enum: ['active', 'inactive', 'closed'],
       default: 'active'
+    },
+
+    postedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'AuthUser',
+      default: null,
     }
   },
   { timestamps: true }

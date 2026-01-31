@@ -3,42 +3,157 @@ const User = require("../models/user");
 const Job = require("../models/job");
 const { generateToken } = require("../utils/jwt");
 
+const normalizePhone = (value) => {
+  if (!value) return null;
+  const digits = String(value).replace(/\D/g, "");
+  // India-centric: keep last 10 digits if country code included
+  const normalized = digits.length > 10 ? digits.slice(-10) : digits;
+  if (normalized.length !== 10) return null;
+  return normalized;
+};
+
+const isLikelyPhone = (value) => {
+  const p = normalizePhone(value);
+  return !!p;
+};
+
+const normalizeRole = (role) => {
+  if (!role) return null;
+  const r = String(role).trim().toLowerCase();
+  if (r === 'job seeker' || r === 'jobseeker' || r === 'seeker') return 'seeker';
+  if (r === 'job giver' || r === 'jobgiver' || r === 'giver') return 'giver';
+  return null;
+};
+
+const generateUsernameFromPhone = async (phone) => {
+  const base = `u_${phone}`;
+  // Usually unique because phone is unique; but keep a fallback.
+  const exists = await AuthUser.findOne({ username: base });
+  if (!exists) return base;
+  return `${base}_${Math.floor(Math.random() * 9000 + 1000)}`;
+};
+
+// Check if a phone already has an account (used by AI assistant flow)
+const checkPhone = async (req, res) => {
+  try {
+    const phone = normalizePhone(req.body?.phone);
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid 10-digit phone number",
+      });
+    }
+
+    const authUser = await AuthUser.findOne({ phone }).select(
+      "_id role profileCompleted profileId"
+    );
+
+    if (!authUser) {
+      return res.status(200).json({
+        success: true,
+        exists: false,
+      });
+    }
+
+    let profileName = null;
+    if (authUser.profileId) {
+      const profile = await User.findById(authUser.profileId).select("name");
+      profileName = profile?.name || null;
+    }
+
+    return res.status(200).json({
+      success: true,
+      exists: true,
+      role: authUser.role,
+      profileCompleted: !!authUser.profileCompleted,
+      profileName,
+    });
+  } catch (error) {
+    console.error("Phone check error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error during phone check",
+      error: error.message,
+    });
+  }
+};
+
 // Register a new user
 const register = async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, role, phone: phoneRaw } = req.body;
+    const normalizedRole = normalizeRole(role) || 'seeker';
+
+    const phone = normalizePhone(phoneRaw);
+    const hasPhone = !!phone;
 
     // Validation
-    if (!username || !email || !password) {
+    if (!password) {
       return res.status(400).json({
         success: false,
-        message: "Please provide username, email and password",
+        message: "Please provide a password/PIN",
       });
+    }
+
+    if (!hasPhone && !username && !email) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide phone number (recommended) or username/email",
+      });
+    }
+
+    if (phoneRaw && !hasPhone) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid 10-digit phone number",
+      });
+    }
+
+    // phone uniqueness
+    if (hasPhone) {
+      const existingPhone = await AuthUser.findOne({ phone });
+      if (existingPhone) {
+        return res.status(400).json({
+          success: false,
+          message: "This phone number is already registered. Please login.",
+        });
+      }
+    }
+
+    let finalUsername = username;
+    if (!finalUsername && hasPhone) {
+      finalUsername = await generateUsernameFromPhone(phone);
     }
 
     // Check if username already exists
-    const existingUsername = await AuthUser.findOne({ username });
-    if (existingUsername) {
-      return res.status(400).json({
-        success: false,
-        message: "Username is already taken",
-      });
+    if (finalUsername) {
+      const existingUsername = await AuthUser.findOne({ username: finalUsername });
+      if (existingUsername) {
+        return res.status(400).json({
+          success: false,
+          message: "Username is already taken",
+        });
+      }
     }
 
     // Check if email already exists
-    const existingEmail = await AuthUser.findOne({ email });
-    if (existingEmail) {
-      return res.status(400).json({
-        success: false,
-        message: "Email is already registered",
-      });
+    if (email) {
+      const existingEmail = await AuthUser.findOne({ email });
+      if (existingEmail) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is already registered",
+        });
+      }
     }
 
     // Create new user
     const user = new AuthUser({
-      username,
-      email,
+      username: finalUsername,
+      email: email || undefined,
+      phone: phone || undefined,
       password,
+      role: normalizedRole,
     });
 
     // Save user to database
@@ -52,6 +167,8 @@ const register = async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
+        phone: user.phone,
+        role: user.role,
       },
     });
   } catch (error) {
@@ -67,18 +184,25 @@ const register = async (req, res) => {
 // Login user
 const login = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, phone: phoneRaw, identifier } = req.body;
+
+    const phone = normalizePhone(phoneRaw || identifier);
+    const usernameOrIdentifier = username || identifier;
 
     // Validation
-    if (!username || !password) {
+    if ((!usernameOrIdentifier && !phone) || !password) {
       return res.status(400).json({
         success: false,
-        message: "Please provide username and password",
+        message: "Please provide phone/username and password/PIN",
       });
     }
 
-    // Find user by username
-    const user = await AuthUser.findOne({ username });
+    // Find user by phone (preferred) or username
+    const query = phone
+      ? { phone }
+      : { username: usernameOrIdentifier };
+
+    const user = await AuthUser.findOne(query);
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -107,6 +231,8 @@ const login = async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
+        phone: user.phone,
+        role: user.role,
         profileCompleted: user.profileCompleted,
         profileId: user.profileId,
       },
@@ -133,6 +259,8 @@ const getCurrentUser = async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
+        phone: user.phone,
+        role: user.role,
         profileCompleted: user.profileCompleted,
         profileId: user.profileId,
       },
@@ -184,6 +312,7 @@ const linkUserProfile = async (req, res) => {
         id: updatedUser._id,
         username: updatedUser.username,
         email: updatedUser.email,
+        role: updatedUser.role,
         profileCompleted: updatedUser.profileCompleted,
         profileId: updatedUser.profileId,
       },
@@ -243,6 +372,34 @@ const createProfile = async (req, res) => {
     
     // DEBUG: Log current profileId value
     console.log('[DEBUG createProfile] Current profileId:', authUser.profileId);
+
+    // Bind AuthUser.phone on first profile creation; reject mismatched updates
+    const normalizedProfilePhone = normalizePhone(phone);
+    if (phone && !normalizedProfilePhone) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid 10-digit phone number",
+      });
+    }
+
+    if (normalizedProfilePhone) {
+      if (!authUser.phone) {
+        const existingPhone = await AuthUser.findOne({ phone: normalizedProfilePhone });
+        if (existingPhone && String(existingPhone._id) !== String(authUser._id)) {
+          return res.status(400).json({
+            success: false,
+            message: "This phone number is already linked to another account",
+          });
+        }
+        authUser.phone = normalizedProfilePhone;
+        await authUser.save();
+      } else if (normalizePhone(authUser.phone) !== normalizedProfilePhone) {
+        return res.status(403).json({
+          success: false,
+          message: "Phone number mismatch. You cannot change phone number from profile form.",
+        });
+      }
+    }
 
     let userProfile;
 
@@ -338,6 +495,26 @@ const createProfile = async (req, res) => {
   }
 };
 
+// Get the currently authenticated user's profile (User model)
+const getUserProfile = async (req, res) => {
+  try {
+    const authUser = req.user;
+    if (!authUser?.profileId) {
+      return res.status(200).json({ success: true, profile: null });
+    }
+
+    const profile = await User.findById(authUser.profileId);
+    return res.status(200).json({ success: true, profile });
+  } catch (error) {
+    console.error('Get user profile error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error while fetching profile',
+      error: error.message,
+    });
+  }
+};
+
 // Update user profile
 const updateUserProfile = async (req, res) => {
   try {
@@ -353,6 +530,39 @@ const updateUserProfile = async (req, res) => {
     }
 
     const updates = req.body;
+
+    // Phone security: bind AuthUser.phone once; prevent changing it later
+    if (Object.prototype.hasOwnProperty.call(updates, 'phone')) {
+      const normalized = normalizePhone(updates.phone);
+      if (updates.phone && !normalized) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please provide a valid 10-digit phone number',
+        });
+      }
+
+      if (normalized) {
+        if (!authUser.phone) {
+          const existingPhone = await AuthUser.findOne({ phone: normalized });
+          if (existingPhone && String(existingPhone._id) !== String(authUser._id)) {
+            return res.status(400).json({
+              success: false,
+              message: 'This phone number is already linked to another account',
+            });
+          }
+          authUser.phone = normalized;
+          await authUser.save();
+        } else if (normalizePhone(authUser.phone) !== normalized) {
+          return res.status(403).json({
+            success: false,
+            message: 'Phone number mismatch. You cannot change your phone number.',
+          });
+        }
+
+        // Keep profile phone normalized too
+        updates.phone = normalized;
+      }
+    }
 
     // Find the User profile
     const userProfile = await User.findById(authUser.profileId);
@@ -401,8 +611,10 @@ const updateUserProfile = async (req, res) => {
 module.exports = {
   register,
   login,
+  checkPhone,
   getCurrentUser,
   linkUserProfile,
   createProfile,
   updateUserProfile,
+  getUserProfile,
 };

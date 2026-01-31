@@ -6,6 +6,8 @@ const connectDB = require("./Config/db");
 const authRoutes = require("./routes/authRoutes");
 const jobRoutes = require("./routes/jobRoutes");
 const voiceRoutes = require("./routes/voiceRoutes");
+const translateRoutes = require("./routes/translateRoutes");
+const applicationRoutes = require("./routes/applicationRoutes");
 const path = require("path");
 
 const app = express();
@@ -52,6 +54,8 @@ const upload = multer({
 app.use("/api/auth", authRoutes);
 app.use("/api/voice", voiceRoutes);
 app.use("/api/jobs", jobRoutes);
+app.use("/api/translate", translateRoutes);
+app.use("/api/applications", applicationRoutes);
 
 // --- Health check route (optional but useful on Render) ---
 app.get("/", (req, res) => {
