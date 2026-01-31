@@ -88,12 +88,18 @@ const NavigationBar = ({ onLanguageChange }) => {
     };
   }, [langDropdownOpen, profileDropdownOpen]);
   
-  // Handle logout
+  // FIXED: Handle logout - Clear ALL user-related data
   const handleLogout = () => {
-    // Remove user data and token from localStorage
+    // Remove authentication data
     localStorage.removeItem('token');
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('user');
+    
+    // CRITICAL FIX: Remove profile data to prevent showing wrong user's data
+    localStorage.removeItem('workerProfile');
+    
+    // ADDITIONAL: Clear any other cached data
+    localStorage.removeItem('preferredLanguage'); // Optional - remove if you want to keep language preference
     
     // Update context
     setCurrentUser(null);
@@ -101,6 +107,9 @@ const NavigationBar = ({ onLanguageChange }) => {
     
     // Navigate to home page
     navigate('/');
+    
+    // Optional: Force page reload to clear any lingering state
+    window.location.reload();
   };
   
   // Toggle profile dropdown

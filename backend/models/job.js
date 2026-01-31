@@ -1,4 +1,3 @@
-// models/job.js
 const mongoose = require("mongoose");
 
 const jobSchema = new mongoose.Schema(
@@ -28,7 +27,7 @@ const jobSchema = new mongoose.Schema(
     },
 
     salary: {
-      type: String, // keep as string: "₹15,000 - ₹20,000"
+      type: String,
       required: true,
       trim: true,
     },
@@ -70,12 +69,35 @@ const jobSchema = new mongoose.Schema(
     },
 
     experience: {
-      type: String, // e.g. "2+ years"
+      type: String,
       required: true,
       trim: true,
     },
+
+    status: {
+      type: String,
+      enum: ['active', 'inactive', 'closed'],
+      default: 'active'
+    }
   },
   { timestamps: true }
 );
+
+// Virtual fields for frontend compatibility
+jobSchema.virtual('jobTitle').get(function() {
+  return this.jobName;
+});
+
+jobSchema.virtual('companyName').get(function() {
+  return this.company;
+});
+
+jobSchema.virtual('description').get(function() {
+  return this.jobDescription;
+});
+
+// Make sure virtuals are included in JSON
+jobSchema.set('toJSON', { virtuals: true });
+jobSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model("Job", jobSchema);

@@ -356,9 +356,16 @@ const AiAssistantPage = () => {
 
             console.log("Submitting finalData:", finalData);
 
+            const token = localStorage.getItem("token");
+
             const profileRes = await axios.post(
               `${server_url}/api/auth/create-profile`,
               finalData,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              },
             );
 
             const {

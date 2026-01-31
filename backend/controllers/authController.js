@@ -167,7 +167,7 @@ const linkUserProfile = async (req, res) => {
         profileId,
         profileCompleted: true,
       },
-      { new: true }
+      { new: true },
     ).select("-password");
 
     if (!updatedUser) {
@@ -198,100 +198,13 @@ const linkUserProfile = async (req, res) => {
   }
 };
 
-// Create a user profile from voice assistant
-// const createProfile = async (req, res) => {
-//   try {
-//     console.log("createProfile req.body:", req.body);
-
-//     let {
-//       name,
-//       age,
-//       address,
-//       phone,
-//       shift_time,
-//       experience,
-//       job_title,
-//       salary_expectation,
-//     } = req.body;
-
-//     // Convert numeric fields
-//     const numericAge = Number(age);
-//     const numericExp = Number(experience);
-//     const numericSalary = Number(salary_expectation);
-
-//     // Required text fields (shift_time NOT required now)
-//     if (!name || !job_title) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Missing required text fields (name, job_title).",
-//       });
-//     }
-
-//     // Validate numbers
-//     if (
-//       Number.isNaN(numericAge) ||
-//       Number.isNaN(numericExp) ||
-//       Number.isNaN(numericSalary)
-//     ) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Age, experience, and salary must be valid numbers.",
-//       });
-//     }
-
-//     if (numericAge <= 0 || numericExp < 0 || numericSalary <= 0) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Age, experience, and salary must be positive values.",
-//       });
-//     }
-
-//     const newUser = new User({
-//       name,
-//       age: numericAge,
-//       address,
-//       phone,
-//       shift_time,
-//       experience: numericExp,
-//       job_title,
-//       salary_expectation: numericSalary,
-//     });
-
-//     await newUser.save();
-
-//     // Build job query based on profile
-//     const jobQuery = {
-//       jobName: { $regex: new RegExp(job_title, "i") },
-//       minAge: { $lte: numericAge },
-//     };
-
-//     if (shift_time) {
-//       jobQuery.availability = { $regex: new RegExp(shift_time, "i") };
-//     }
-
-//     const recommendedJobs = await Job.find(jobQuery).limit(5);
-
-//     return res.status(201).json({
-//       success: true,
-//       message: "Profile created successfully!",
-//       profileId: newUser._id,
-//       user: newUser,
-//       recommendedJobs,
-//     });
-//   } catch (error) {
-//     console.error("Error creating profile:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Server error while creating profile.",
-//       error: error.message,
-//     });
-//   }
-// };
-
+// Create or update a user profile
+// FIXED: Now properly protected by authMiddleware and uses req.user._id
 const createProfile = async (req, res) => {
   try {
-    console.log("createProfile req.body:", req.body);
-
+    // DEBUG: Log the AuthUser ID
+    console.log('[DEBUG createProfile] AuthUser ID:', req.user._id);
+    
     let {
       name,
       age,
@@ -310,7 +223,7 @@ const createProfile = async (req, res) => {
     if (!name || !job_title) {
       return res.status(400).json({
         success: false,
-        message: "Missing required text fields (name, job_title).",
+        message: "Missing required fields (name, job_title)",
       });
     }
 
@@ -321,94 +234,165 @@ const createProfile = async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        message: "Age, experience, and salary must be valid numbers.",
+        message: "Age, experience, and salary must be valid numbers",
       });
     }
 
-    if (numericAge <= 0 || numericExp < 0 || numericSalary <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Age, experience, and salary must be positive values.",
-      });
-    }
+    // CRITICAL: Fetch the AuthUser to check if profileId already exists
+    const authUser = await AuthUser.findById(req.user._id);
+    
+    // DEBUG: Log current profileId value
+    console.log('[DEBUG createProfile] Current profileId:', authUser.profileId);
 
-    const newUser = new User({
-      name,
-      age: numericAge,
-      address,
-      phone,
-      shift_time,
-      experience: numericExp,
-      job_title,
-      salary_expectation: numericSalary,
-    });
+    let userProfile;
 
-    await newUser.save();
-
-    // ---------- JOB RECOMMENDATION LOGIC ----------
-    // 1. Base query: age + title text
-    let baseQuery = {
-      minAge: { $lte: numericAge },
-      jobName: { $regex: new RegExp(job_title, "i") }, // "driver", "security", etc.
-    };
-
-    // Only constrain availability if user did NOT say "flexible"
-    if (
-      shift_time &&
-      shift_time.toLowerCase() !== "flexible" &&
-      shift_time.toLowerCase() !== "any"
-    ) {
-      baseQuery.availability = { $regex: new RegExp(shift_time, "i") };
-    }
-
-    let recommendedJobs = await Job.find(baseQuery).limit(5);
-
-    // 2. If still nothing, relax availability filter
-    if (!recommendedJobs.length) {
-      const relaxedQuery = {
-        minAge: { $lte: numericAge },
-        jobName: { $regex: new RegExp(job_title, "i") },
-      };
-      recommendedJobs = await Job.find(relaxedQuery).limit(5);
-    }
-
-    // 3. If still nothing, fall back to category (if we can guess)
-    if (!recommendedJobs.length) {
-      // naive mapping from job_title -> category
-      const titleLower = job_title.toLowerCase();
-      let category = null;
-      if (titleLower.includes("driver")) category = "driver";
-      else if (titleLower.includes("cook") || titleLower.includes("chef"))
-        category = "cook";
-      else if (titleLower.includes("security")) category = "other"; // or some category you want
-      // add more mappings as needed
-
-      if (category) {
-        recommendedJobs = await Job.find({
-          category,
-          minAge: { $lte: numericAge },
-        }).limit(5);
+    if (authUser.profileId) {
+      // CASE 1: Profile already exists → UPDATE IT
+      console.log('[DEBUG createProfile] Updating existing profile:', authUser.profileId);
+      
+      userProfile = await User.findByIdAndUpdate(
+        authUser.profileId,
+        {
+          name,
+          age: numericAge,
+          address,
+          phone,
+          shift_time,
+          experience: numericExp,
+          job_title,
+          salary_expectation: numericSalary,
+        },
+        { new: true }
+      );
+      
+      if (!userProfile) {
+        // Profile ID exists but profile is missing → create new and relink
+        console.log('[DEBUG createProfile] Profile missing, creating new one');
+        
+        userProfile = new User({
+          name,
+          age: numericAge,
+          address,
+          phone,
+          shift_time,
+          experience: numericExp,
+          job_title,
+          salary_expectation: numericSalary,
+        });
+        
+        await userProfile.save();
+        
+        // Update AuthUser with new profile ID
+        await AuthUser.findByIdAndUpdate(req.user._id, {
+          profileId: userProfile._id,
+          profileCompleted: true,
+        });
+        
+        console.log('[DEBUG createProfile] New profile created and linked:', userProfile._id);
       }
+    } else {
+      // CASE 2: No profile exists → CREATE ONE and link it ONCE
+      console.log('[DEBUG createProfile] Creating new profile');
+      
+      userProfile = new User({
+        name,
+        age: numericAge,
+        address,
+        phone,
+        shift_time,
+        experience: numericExp,
+        job_title,
+        salary_expectation: numericSalary,
+      });
+
+      await userProfile.save();
+      
+      console.log('[DEBUG createProfile] Profile created:', userProfile._id);
+
+      // CRITICAL: Link profile to AuthUser ONCE
+      await AuthUser.findByIdAndUpdate(req.user._id, {
+        profileId: userProfile._id,
+        profileCompleted: true,
+      });
+      
+      console.log('[DEBUG createProfile] Profile linked to AuthUser');
     }
 
-    // 4. Final fallback – just give some jobs so page is not empty
-    if (!recommendedJobs.length) {
-      recommendedJobs = await Job.find().limit(5);
-    }
-    // ---------- END JOB RECOMMENDATION LOGIC ----------
+    // Get recommended jobs (unchanged logic)
+    let recommendedJobs = await Job.find({ status: "active" }).limit(5);
 
     return res.status(201).json({
       success: true,
-      message: "Profile created successfully!",
-      profileId: newUser._id,
-      user: newUser,
+      message: authUser.profileId ? "Profile updated successfully" : "Profile created successfully",
+      profileId: userProfile._id,
+      user: userProfile,
       recommendedJobs,
     });
   } catch (error) {
-    console.error("Error creating profile:", error);
-    res.status(500).json({
+    console.error("[ERROR createProfile]", error);
+    return res.status(500).json({
       success: false,
-      message: "Server error while creating profile.",
+      message: "Server error while creating/updating profile",
+      error: error.message,
+    });
+  }
+};
+
+// Update user profile
+const updateUserProfile = async (req, res) => {
+  try {
+    const authUserId = req.user._id;
+
+    // Get the AuthUser to find profileId
+    const authUser = await AuthUser.findById(authUserId);
+    if (!authUser || !authUser.profileId) {
+      return res.status(404).json({
+        success: false,
+        message: "Profile not found. Please create a profile first.",
+      });
+    }
+
+    const updates = req.body;
+
+    // Find the User profile
+    const userProfile = await User.findById(authUser.profileId);
+    if (!userProfile) {
+      return res.status(404).json({
+        success: false,
+        message: "Profile not found",
+      });
+    }
+
+    // Update allowed fields
+    if (updates.name) userProfile.name = updates.name;
+    if (updates.age) userProfile.age = updates.age;
+    if (updates.phone) userProfile.phone = updates.phone;
+    if (updates.address) userProfile.address = updates.address;
+    if (updates.shift_time) userProfile.shift_time = updates.shift_time;
+    if (updates.experience !== undefined)
+      userProfile.experience = updates.experience;
+    if (updates.job_title) userProfile.job_title = updates.job_title;
+    if (updates.salary_expectation)
+      userProfile.salary_expectation = updates.salary_expectation;
+
+    // CRITICAL: Invalidate recommendations cache
+    userProfile.cachedRecommendations = [];
+    userProfile.recommendationsLastUpdated = null;
+    userProfile.profileHash = null;
+
+    await userProfile.save();
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Profile updated successfully. Recommendations will be refreshed.",
+      profile: userProfile,
+    });
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update profile",
       error: error.message,
     });
   }
@@ -420,4 +404,5 @@ module.exports = {
   getCurrentUser,
   linkUserProfile,
   createProfile,
+  updateUserProfile,
 };

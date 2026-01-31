@@ -1,532 +1,276 @@
 import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useAuthContext } from "../context/AuthContext";
 import NavigationBar from "../components/NavigationBar";
 import Footer from "../components/Footer";
-import { useAuthContext } from "../context/AuthContext";
-import "./JobsPage.css";
 import axios from "axios";
-import { useTranslation } from "react-i18next";
+import "./JobsPage.css";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const JobsPage = () => {
-  const location = useLocation();
-  const { t, i18n } = useTranslation();
-  const [jobs, setJobs] = useState([]);
+  const { currentUser, isAuthenticated, jobViewMode, toggleJobViewMode } =
+    useAuthContext();
+  const [recommendedJobs, setRecommendedJobs] = useState([]);
+  const [otherJobs, setOtherJobs] = useState([]);
+  const [allJobs, setAllJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterCategory, setFilterCategory] = useState("all");
-  const [showAddJobForm, setShowAddJobForm] = useState(false);
-  const { currentUser, isAuthenticated } = useAuthContext();
-  const [userType, setUserType] = useState(null);
-  const [isRecommended, setIsRecommended] = useState(false);
-  const [showUserTypeModal, setShowUserTypeModal] = useState(false);
-  const categories = [
-    { id: "driver", icon: "car" },
-    { id: "cook", icon: "utensils" },
-    { id: "cleaner", icon: "broom" },
-    { id: "gardener", icon: "seedling" },
-    { id: "plumber", icon: "wrench" },
-    { id: "electrician", icon: "bolt" },
-    { id: "other", icon: "briefcase" },
-  ];
+  const [error, setError] = useState(null);
+  const [mode, setMode] = useState("public");
+  const [lastUpdated, setLastUpdated] = useState(null);
 
-  useEffect(() => {
-    const state = location.state;
-
-    if (
-      state?.fromProfile &&
-      Array.isArray(state.recommendedJobs) &&
-      state.recommendedJobs.length > 0
-    ) {
-      setJobs(state.recommendedJobs);
-      setIsRecommended(true);
-      setLoading(false);
-    } else {
-      // either not from profile OR no recommended jobs -> load all jobs
-      fetchJobs();
-    }
-
-    if (isAuthenticated && currentUser) {
-      checkUserType();
-    }
-  }, [isAuthenticated, currentUser, location.state]);
-
-  const checkUserType = () => {
-    try {
-      const type = localStorage.getItem("userType");
-      if (type) setUserType(type);
-    } catch (error) {
-      console.error("Error checking user type:", error);
-    }
-  };
-
-  const fetchJobs = async () => {
+  // Fetch jobs based on authentication and mode
+  const fetchJobs = async (forceRefresh = false) => {
     setLoading(true);
-    try {
-      const res = await axios.get("https://kaamkhojaibackend.onrender.com/api/jobs");
-      if (res.data.success) {
-        setJobs(res.data.jobs || []);
-      } else {
-        setJobs([]);
-      }
-    } catch (error) {
-      console.error("Error fetching jobs:", error);
-      setJobs([]);
-    } finally {
-      setLoading(false);
-      setIsRecommended(false);
-    }
-  };
-
-  const currentLang = (i18n.language || "en").split("-")[0];
-
-  const handleSearch = (e) => setSearchTerm(e.target.value);
-
-  const handleCategoryFilter = (category) => setFilterCategory(category);
-
-  const handleAddJob = () => {
-    if (!isAuthenticated) {
-      alert(t("jobs.loginToPost"));
-      return;
-    }
-
-    if (!userType) {
-      setShowUserTypeModal(true);
-      return;
-    }
-
-    if (userType === "contractor") {
-      setShowAddJobForm(true);
-    } else {
-      alert(t("jobs.onlyContractorsCanPost"));
-    }
-  };
-
-  const handleSubmitJob = async (e) => {
-    e.preventDefault();
-    const form = e.target;
-
-    const payload = {
-      jobName: form.jobTitle.value,
-      company: "Individual / Contractor", // or add company field to form
-      jobDescription: form.jobDescription.value,
-      location: form.location.value,
-      salary: form.salary.value,
-      category: form.category.value,
-      minAge: Number(form.minAge.value),
-      availability: form.availability.value,
-      skillsRequired: form.skillsRequired.value
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-      experience: form.experience.value,
-    };
+    setError(null);
 
     try {
-      // backend POST route should accept this:
-      // POST https://kaamkhojaibackend.onrender.com/api/jobs
-      const res = await axios.post("https://kaamkhojaibackend.onrender.com/api/jobs", payload);
-      if (res.data.success) {
-        alert(t("jobs.submitSuccess"));
-        form.reset();
-        setShowAddJobForm(false);
-        fetchJobs();
+      let response;
+      const token = localStorage.getItem("token");
+
+      if (!isAuthenticated) {
+        // NOT LOGGED IN - Show random + nearby jobs
+        const position = await getCurrentPosition();
+
+        response = await axios.get(`${API_URL}/api/jobs/public`, {
+          params: {
+            lat: position?.latitude,
+            lon: position?.longitude,
+            limit: 20,
+          },
+        });
+
+        setAllJobs(response.data.jobs);
+        setRecommendedJobs([]);
+        setOtherJobs([]);
+        setMode("public");
       } else {
-        alert(res.data.message || t("jobs.submitError"));
+        // LOGGED IN USER
+        const hasProfile = currentUser?.profileCompleted === true;
+
+        if (hasProfile && jobViewMode === "recommended") {
+          // ✅ Profile exists → Get recommended jobs (separated)
+          response = await axios.get(`${API_URL}/api/jobs/recommended`, {
+            headers: { Authorization: `Bearer ${token}` },
+            params: { forceRefresh },
+          });
+
+          // Split jobs into recommended (exact matches) and others
+          const allJobsData = response.data.jobs || [];
+          const recommended = response.data.recommendedJobs || [];
+          const others = response.data.otherJobs || [];
+
+          setRecommendedJobs(recommended);
+          setOtherJobs(others);
+          setAllJobs([]);
+          setLastUpdated(response.data.lastUpdated);
+          setMode("recommended");
+        } else if (hasProfile && jobViewMode === "nearby") {
+          // ✅ Profile exists + nearby mode selected
+          response = await axios.get(`${API_URL}/api/jobs/nearby`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          setAllJobs(response.data.jobs);
+          setRecommendedJobs([]);
+          setOtherJobs([]);
+          setMode("nearby");
+        } else {
+          // ✅ No profile → public jobs
+          const position = await getCurrentPosition();
+
+          response = await axios.get(`${API_URL}/api/jobs/public`, {
+            params: {
+              lat: position?.latitude,
+              lon: position?.longitude,
+              limit: 20,
+            },
+          });
+
+          setAllJobs(response.data.jobs);
+          setRecommendedJobs([]);
+          setOtherJobs([]);
+          setMode("public");
+        }
       }
     } catch (err) {
-      console.error("Error submitting job:", err);
-      alert(t("jobs.submitError"));
+      console.error("Error fetching jobs:", err);
+      setError("Failed to load jobs. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUserTypeSelection = (type) => {
-    setUserType(type);
-    localStorage.setItem("userType", type);
-    setShowUserTypeModal(false);
-
-    if (type === "contractor") {
-      setShowAddJobForm(true);
-    }
+  // Get user's current position (with permission)
+  const getCurrentPosition = () => {
+    return new Promise((resolve) => {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            resolve({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            });
+          },
+          () => resolve(null), // Fallback if denied
+        );
+      } else {
+        resolve(null);
+      }
+    });
   };
 
-  // Filter jobs based on search term and category
-  const filteredJobs = jobs.filter((job) => {
-    const titleText = (job.title && (job.title[currentLang] || job.title.en)) || job.jobName || "";
-    const descriptionText =
-      (job.description && (job.description[currentLang] || job.description.en)) ||
-      job.jobDescription ||
-      "";
-    const companyText =
-      typeof job.company === "object"
-        ? job.company[currentLang] || job.company.en || ""
-        : job.company || "";
-    const locationText =
-      typeof job.location === "object"
-        ? job.location[currentLang] || job.location.en || ""
-        : job.location || "";
+  // Fetch jobs on component mount and when auth/mode changes
+  useEffect(() => {
+    fetchJobs();
+  }, [isAuthenticated, jobViewMode]);
 
-    const search = searchTerm.toLowerCase();
+  // Handle mode toggle
+  const handleToggleMode = async () => {
+    const newMode = jobViewMode === "recommended" ? "nearby" : "recommended";
+    await toggleJobViewMode(newMode);
+  };
 
-    const matchesSearch =
-      titleText.toLowerCase().includes(search) ||
-      descriptionText.toLowerCase().includes(search) ||
-      companyText.toLowerCase().includes(search) ||
-      locationText.toLowerCase().includes(search);
+  if (loading) {
+    return (
+      <>
+        <NavigationBar />
+        <div className="jobs-page-wrapper">
+          <div className="jobs-container">
+            <div className="loading">Loading jobs...</div>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
 
-    const matchesCategory =
-      filterCategory === "all" || job.category === filterCategory;
+  if (error) {
+    return (
+      <>
+        <NavigationBar />
+        <div className="jobs-page-wrapper">
+          <div className="jobs-container">
+            <div className="error">{error}</div>
+            <button onClick={() => fetchJobs()}>Retry</button>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
 
-    return matchesSearch && matchesCategory;
-  });
+  // Render function for job cards
+  const renderJobCard = (job) => (
+    <div key={job._id} className="job-card">
+      <h3>{job.jobName}</h3>
+      <p className="company">{job.company}</p>
+      <p className="location">📍 {job.location}</p>
+      <p className="salary">💰 {job.salary}</p>
+      <p className="description">{job.jobDescription}</p>
+      {job.distance && (
+        <p className="distance">📏 {job.distance.toFixed(1)} km away</p>
+      )}
+      <div className="job-meta">
+        <span className="category-badge">{job.category}</span>
+        <span className="experience-badge">{job.experience}</span>
+      </div>
+      <button className="apply-btn">Apply Now</button>
+    </div>
+  );
 
   return (
-    <div className="jobs-page">
+    <>
       <NavigationBar />
-
-      <div className="jobs-content">
-        <div className="container">
+      <div className="jobs-page-wrapper">
+        <div className="jobs-container">
           <div className="jobs-header">
-            <h1>
-              {t("jobs.pageTitle")} {isRecommended ? t("jobs.recommendedTag") : ""}
-            </h1>
+            <h2>
+              {mode === "public" && "Available Jobs"}
+              {mode === "recommended" && "Jobs For You"}
+              {mode === "nearby" && "Jobs Near You"}
+            </h2>
 
-            <div className="jobs-actions">
-              <div className="search-container">
-                <input
-                  type="text"
-                  placeholder={t("jobs.searchPlaceholder")}
-                  value={searchTerm}
-                  onChange={handleSearch}
-                  className="search-input"
-                />
-                <i className="fas fa-search search-icon" />
-              </div>
+            {isAuthenticated && currentUser?.profileCompleted && (
+              <div className="jobs-controls">
+                <button className="toggle-mode-btn" onClick={handleToggleMode}>
+                  {jobViewMode === "recommended"
+                    ? "📍 Show Nearby Jobs"
+                    : "⭐ Show Recommended Jobs"}
+                </button>
 
-              <button className="post-job-button" onClick={handleAddJob}>
-                <i className="fas fa-plus" /> {t("jobs.addJob")}
-              </button>
-            </div>
-          </div>
-
-          <div className="categories-section">
-            <h2>{t("jobs.categoriesTitle")}</h2>
-            <div className="categories-container">
-              <div
-                className={`category-item ${
-                  filterCategory === "all" ? "active" : ""
-                }`}
-                onClick={() => handleCategoryFilter("all")}
-              >
-                <div className="category-icon">
-                  <i className="fas fa-th-large" />
-                </div>
-                <span>{t("jobs.all")}</span>
-              </div>
-
-              {categories.map((category) => (
-                <div
-                  key={category.id}
-                  className={`category-item ${
-                    filterCategory === category.id ? "active" : ""
-                  }`}
-                  onClick={() => handleCategoryFilter(category.id)}
-                >
-                  <div className="category-icon">
-                    <i className={`fas fa-${category.icon}`} />
-                  </div>
-                  <span>{t(`jobs.category.${category.id}`)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="jobs-listing">
-            <h2>{t("jobs.popular")}</h2>
-
-            {loading ? (
-              <div className="loading-container">
-                <p>{t("jobs.loading")}</p>
-              </div>
-            ) : filteredJobs.length > 0 ? (
-              <div className="jobs-grid">
-                {filteredJobs.map((job) => {
-                  const title =
-                    (job.title && job.title[currentLang]) || job.jobName || "Job";
-
-                  const company =
-                    typeof job.company === "object"
-                      ? job.company[currentLang] || job.company.en || job.company
-                      : job.company || "";
-
-                  const locationText =
-                    typeof job.location === "object"
-                      ? job.location[currentLang] ||
-                        job.location.en ||
-                        job.location
-                      : job.location || "";
-
-                  const salary = job.salary || "";
-                  const availability = job.availability || "";
-
-                  const availabilityText =
-                    availability === "full-time"
-                      ? t("jobs.fullTime")
-                      : availability === "part-time"
-                      ? t("jobs.partTime")
-                      : availability === "weekends"
-                      ? t("jobs.weekends")
-                      : availability === "flexible"
-                      ? t("jobs.flexible")
-                      : availability; // e.g. day/night
-
-                  const icon = job.icon || "briefcase";
-                  const skills = job.skillsRequired || [];
-
-                  const description =
-                    (job.description &&
-                      (job.description[currentLang] ||
-                        job.description.en ||
-                        job.description)) ||
-                    job.jobDescription ||
-                    "";
-
-                  return (
-                    <div className="job-card" key={job._id || job.id}>
-                      <div className="job-card-header">
-                        <div className="job-icon">
-                          <i className={`fas fa-${icon}`} />
-                        </div>
-                        <h3 className="job-title">{title}</h3>
-                        <div className="job-company">{company}</div>
-                      </div>
-
-                      <div className="job-card-body">
-                        {description && (
-                          <p className="job-description">{description}</p>
-                        )}
-
-                        <div className="job-meta">
-                          <div className="job-meta-item">
-                            <i className="fas fa-map-marker-alt" />
-                            <span>{locationText}</span>
-                          </div>
-
-                          <div className="job-meta-item">
-                            <i className="fas fa-money-bill-wave" />
-                            <span>{salary}</span>
-                          </div>
-
-                          <div className="job-meta-item">
-                            <i className="fas fa-clock" />
-                            <span>{availabilityText}</span>
-                          </div>
-                        </div>
-
-                        <div className="skills-container">
-                          {skills.map((skill, index) => (
-                            <span className="skill-tag" key={index}>
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="job-card-footer">
-                        <button className="apply-button">
-                          {t("jobs.applyNow")}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="no-jobs-container">
-                <p>{t("jobs.noJobs")}</p>
+                {jobViewMode === "recommended" && (
+                  <button className="refresh-btn" onClick={() => fetchJobs(true)}>
+                    🔄 Refresh Recommendations
+                  </button>
+                )}
               </div>
             )}
           </div>
+
+          {mode === "recommended" && lastUpdated && (
+            <div className="last-updated">
+              Recommendations last updated: {new Date(lastUpdated).toLocaleString()}
+            </div>
+          )}
+
+          {/* RECOMMENDED JOBS SECTION - Only exact matches */}
+          {mode === "recommended" && (
+            <>
+              {recommendedJobs.length > 0 && (
+                <div className="job-section">
+                  <h3 className="section-title">
+                    <span className="star-icon">⭐</span> Recommended Jobs Based on Your Profile
+                  </h3>
+                  <div className="jobs-grid">
+                    {recommendedJobs.map(renderJobCard)}
+                  </div>
+                </div>
+              )}
+
+              {/* OTHER JOBS SECTION - Related/alternative jobs */}
+              {otherJobs.length > 0 && (
+                <div className="job-section other-jobs-section">
+                  <h3 className="section-title">
+                    <span className="lightbulb-icon">💡</span> Other Jobs You Might Be Interested In
+                  </h3>
+                  <div className="jobs-grid">
+                    {otherJobs.map(renderJobCard)}
+                  </div>
+                </div>
+              )}
+
+              {/* NO JOBS FOUND */}
+              {recommendedJobs.length === 0 && otherJobs.length === 0 && (
+                <div className="no-jobs">
+                  <p>No matching jobs found for your profile.</p>
+                  <p>Try updating your profile or switch to nearby jobs.</p>
+                  <button className="toggle-mode-btn" onClick={handleToggleMode}>
+                    📍 View Nearby Jobs
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* PUBLIC/NEARBY JOBS - Single list */}
+          {(mode === "public" || mode === "nearby") && (
+            <>
+              {allJobs.length === 0 ? (
+                <div className="no-jobs">
+                  <p>No jobs available at the moment.</p>
+                  <p>Please check back later.</p>
+                </div>
+              ) : (
+                <div className="jobs-grid">
+                  {allJobs.map(renderJobCard)}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
-
-      {/* Add Job Form Modal */}
-      {showAddJobForm && (
-        <div className="modal-overlay">
-          <div className="modal-container">
-            <div className="modal-header">
-              <h2>{t("jobs.addNewJob")}</h2>
-              <button
-                className="close-button"
-                onClick={() => setShowAddJobForm(false)}
-              >
-                <i className="fas fa-times" />
-              </button>
-            </div>
-
-            <div className="modal-body">
-              <form onSubmit={handleSubmitJob}>
-                <div className="form-group">
-                  <label htmlFor="jobTitle">{t("jobs.jobTitle")}</label>
-                  <input type="text" id="jobTitle" required />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="jobDescription">{t("jobs.jobDescription")}</label>
-                  <textarea id="jobDescription" rows="4" required />
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="location">{t("jobs.location")}</label>
-                    <input type="text" id="location" required />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="salary">{t("jobs.salary")}</label>
-                    <input
-                      type="text"
-                      id="salary"
-                      placeholder="₹15,000 - ₹20,000"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="category">{t("jobs.category")}</label>
-                    <select id="category" required>
-                      <option value="driver">
-                        {t("jobs.category.driver")}
-                      </option>
-                      <option value="cook">
-                        {t("jobs.category.cook")}
-                      </option>
-                      <option value="cleaner">
-                        {t("jobs.category.cleaner")}
-                      </option>
-                      <option value="gardener">
-                        {t("jobs.category.gardener")}
-                      </option>
-                      <option value="plumber">
-                        {t("jobs.category.plumber")}
-                      </option>
-                      <option value="electrician">
-                        {t("jobs.category.electrician")}
-                      </option>
-                      <option value="other">
-                        {t("jobs.category.other")}
-                      </option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="minAge">{t("jobs.minAge")}</label>
-                    <input type="number" id="minAge" min="18" required />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="availability">{t("jobs.availability")}</label>
-                  <select id="availability" required>
-                    <option value="full-time">
-                      {t("jobs.fullTime")}
-                    </option>
-                    <option value="part-time">
-                      {t("jobs.partTime")}
-                    </option>
-                    <option value="weekends">
-                      {t("jobs.weekends")}
-                    </option>
-                    <option value="flexible">
-                      {t("jobs.flexible")}
-                    </option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="skillsRequired">{t("jobs.skillsRequired")}</label>
-                    <input
-                      type="text"
-                      id="skillsRequired"
-                      placeholder={t("jobs.skillsPlaceholder")}
-                      required
-                    />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="experience">{t("jobs.experience")}</label>
-                    <input
-                      type="text"
-                      id="experience"
-                      placeholder={t("jobs.experiencePlaceholder")}
-                      required
-                    />
-                </div>
-
-                <div className="form-buttons">
-                  <button
-                    type="button"
-                    className="cancel-button"
-                    onClick={() => setShowAddJobForm(false)}
-                  >
-                    {t("jobs.cancel")}
-                  </button>
-                  <button type="submit" className="submit-button">
-                    {t("jobs.submitJob")}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* User Type Selection Modal */}
-      {showUserTypeModal && (
-        <div className="modal-overlay">
-          <div className="modal-container user-type-modal">
-            <div className="modal-header">
-              <h2>{t("jobs.userTypeQuestion")}</h2>
-              <button
-                className="close-button"
-                onClick={() => setShowUserTypeModal(false)}
-              >
-                <i className="fas fa-times" />
-              </button>
-            </div>
-
-            <div className="modal-body">
-              <div className="user-type-options">
-                <div
-                  className="user-type-option"
-                  onClick={() => handleUserTypeSelection("worker")}
-                >
-                  <div className="user-type-icon">
-                    <i className="fas fa-hard-hat" />
-                  </div>
-                  <h3>{t("jobs.worker")}</h3>
-                  <p>{t("jobs.workerInfo")}</p>
-                </div>
-
-                <div
-                  className="user-type-option"
-                  onClick={() => handleUserTypeSelection("contractor")}
-                >
-                  <div className="user-type-icon">
-                    <i className="fas fa-building" />
-                  </div>
-                  <h3>{t("jobs.contractor")}</h3>
-                  <p>{t("jobs.contractorInfo")}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       <Footer />
-    </div>
+    </>
   );
 };
 

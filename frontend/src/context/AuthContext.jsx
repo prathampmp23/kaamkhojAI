@@ -1,5 +1,8 @@
 // context/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Create the context
 const AuthContext = createContext();
@@ -9,6 +12,7 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [jobViewMode, setJobViewMode] = useState('recommended');
 
   useEffect(() => {
     // Check if user is logged in from localStorage
@@ -27,13 +31,30 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
+  const toggleJobViewMode = async (mode) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(
+        `${API_URL}/api/jobs/toggle-mode`,
+        { mode },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setJobViewMode(mode);
+    } catch (error) {
+      console.error('Error toggling job view mode:', error);
+    }
+  };
+
   // Value to be provided by the context
   const value = {
     currentUser,
     isAuthenticated,
     isLoading,
     setCurrentUser,
-    setIsAuthenticated
+    setIsAuthenticated,
+    jobViewMode,
+    setJobViewMode,
+    toggleJobViewMode
   };
 
   return (

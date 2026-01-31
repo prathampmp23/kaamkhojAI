@@ -1,7 +1,19 @@
-// routes/jobRoutes.js
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const Job = require("../models/job");
+const Job = require('../models/job');
+const jobController = require('../controllers/jobController');
+const protect = require('../middleware/auth');
+
+
+// Public route - for non-logged-in users
+router.get('/public', jobController.getPublicJobs);
+
+// Protected routes - for logged-in workers
+console.log("protect:", protect);
+router.get('/recommended', protect, jobController.getRecommendedJobs);
+router.get('/nearby', protect, jobController.getNearbyJobs);
+router.post('/toggle-mode', protect, jobController.toggleJobViewMode);
+router.post('/invalidate-recommendations', protect, jobController.invalidateRecommendations);
 
 // GET /api/jobs - list all jobs
 router.get("/", async (req, res) => {
@@ -67,6 +79,7 @@ router.post("/", async (req, res) => {
         ? skillsRequired.split(",").map((s) => s.trim())
         : [],
       experience,
+      status: 'active'
     });
 
     await job.save();
