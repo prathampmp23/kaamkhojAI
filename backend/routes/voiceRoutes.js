@@ -103,6 +103,24 @@ function extractField(text, field) {
       const m = t.match(/(\d{1,2})\s*(?:years?|saal|वर्ष)/i);
       return m ? parseInt(m[1], 10) : null;
     }
+    case "skills": {
+      // Return short, comma-separated skills/work types
+      const cleaned = t
+        .replace(/(?:my skills are|skills are|i can|i can do|skill|कौशल|स्किल्स|मैं|मला|मी|कर सकता|करते|करू शकतो|करते|येता)/gi, " ")
+        .replace(/[\.|;:]+/g, ",")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (!cleaned) return null;
+      // If user spoke a sentence, keep a compact string
+      const parts = cleaned
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .slice(0, 6);
+
+      return parts.length ? parts.join(", ") : cleaned;
+    }
     case "job_title": {
       const jobs = [
         "driver",
@@ -252,6 +270,14 @@ router.post("/validate-with-ai", async (req, res) => {
     "बीस हजार" → 20000
     "fifteen thousand" → 15000
     - Ignore daily wages.
+
+    skills:
+    - Extract ONLY a short comma-separated list of skills/work types in English.
+    - Max 6 items.
+    - Transliterate Hindi/Marathi into English.
+    Examples:
+    "मुझे ड्राइविंग और डिलिव्हरी आती है" → "driving, delivery"
+    "मी साफसफाई, कुकिंग करतो" → "cleaning, cooking"
 
     ━━━━━━━━━━━━━━━━━━━━━━
     RESPONSE FORMAT (JSON ONLY)

@@ -12,9 +12,9 @@ const flowOrder = [
   "name",
   "age",
   "address",
-  "phone",
   "shift_time",
   "experience",
+  "skills",
   "job_title",
   "salary_expectation",
 ];
@@ -36,11 +36,6 @@ const getFieldPrompt = (field, lang) => {
       hi: "कृपया अपना पता या इलाका बताइए।",
       mr: "कृपया तुमचा पत्ता किंवा परिसर सांगा.",
     },
-    phone: {
-      en: "Please tell your 10-digit phone number.",
-      hi: "कृपया अपना 10 अंकों का फोन नंबर बताइए।",
-      mr: "कृपया तुमचा 10 अंकी फोन नंबर सांगा.",
-    },
     shift_time: {
       en: "Preferred shift: day, night, or flexible?",
       hi: "पसंदीदा शिफ्ट: दिन, रात, या लचीला?",
@@ -50,6 +45,11 @@ const getFieldPrompt = (field, lang) => {
       en: "How many years of experience do you have?",
       hi: "आपके पास कितने साल का अनुभव है?",
       mr: "तुमच्याकडे किती वर्षांचा अनुभव आहे?",
+    },
+    skills: {
+      en: "Tell me your skills or work you can do (for example: driving, cooking, cleaning).",
+      hi: "अपनी स्किल्स या आप कौन सा काम कर सकते हैं बताइए (जैसे: ड्राइविंग, खाना बनाना, सफाई)।",
+      mr: "तुमच्या कौशल्या/तुम्ही कोणते काम करू शकता ते सांगा (उदा: ड्रायव्हिंग, स्वयंपाक, साफसफाई).",
     },
     job_title: {
       en: "Which job type are you looking for (e.g., driver, cook, security)?",
@@ -84,11 +84,6 @@ const getRetryPrompt = (field, lang) => {
       hi: "कृपया अपना पता फिर से बताइए।",
       mr: "कृपया तुमचा पत्ता पुन्हा सांगा.",
     },
-    phone: {
-      en: "Please say your 10-digit phone number slowly, one digit at a time.",
-      hi: "कृपया अपना 10 अंकों का नंबर धीरे-धीरे, एक-एक अंक बोलिए।",
-      mr: "कृपया तुमचा 10 अंकी नंबर हळू, एक-एक अंक सांगा.",
-    },
     shift_time: {
       en: "Say day, night, or flexible.",
       hi: "दिन, रात, या लचीला बोलिए।",
@@ -98,6 +93,11 @@ const getRetryPrompt = (field, lang) => {
       en: "Say how many years of experience you have.",
       hi: "बताइए कितने साल का अनुभव है।",
       mr: "किती वर्षांचा अनुभव आहे ते सांगा.",
+    },
+    skills: {
+      en: "Please tell your skills again. Keep it short (2 to 5 skills).",
+      hi: "कृपया अपनी स्किल्स फिर से बताइए। 2 से 5 स्किल्स बोलिए।",
+      mr: "कृपया तुमची कौशल्ये पुन्हा सांगा. 2 ते 5 कौशल्ये सांगा.",
     },
     job_title: {
       en: "Say your desired job type again.",
@@ -140,6 +140,7 @@ const AiAssistantPage = () => {
     phone: "",
     shift_time: "",
     experience: "",
+    skills: "",
     job_title: "",
     salary_expectation: "",
   });
@@ -167,22 +168,11 @@ const AiAssistantPage = () => {
   const [voicesLoaded, setVoicesLoaded] = useState(false);
   const isActiveRef = useRef(true);
 
-  const [authReady, setAuthReady] = useState(() => {
-    try {
-      return !!localStorage.getItem("token");
-    } catch {
-      return false;
-    }
-  });
-
-  const [authGate, setAuthGate] = useState({
+  const [accountAssist, setAccountAssist] = useState({
+    step: "none", // none | ask_phone | ask_pin | working
     phone: "",
     pin: "",
-    step: "check", // check | login | register
-    loading: false,
     error: "",
-    exists: null,
-    profileName: null,
   });
 
   const normalizePhoneClient = (value) => {
@@ -190,6 +180,82 @@ const AiAssistantPage = () => {
     const normalized = digits.length > 10 ? digits.slice(-10) : digits;
     if (normalized.length !== 10) return null;
     return normalized;
+  };
+
+  const parsePinFromSpeech = (text) => {
+    const digits = String(text || "").replace(/\D/g, "");
+    if (digits.length >= 4) return digits.slice(-4);
+
+    const lower = String(text || "").toLowerCase();
+    const map = {
+      zero: "0",
+      one: "1",
+      two: "2",
+      three: "3",
+      four: "4",
+      five: "5",
+      six: "6",
+      seven: "7",
+      eight: "8",
+      nine: "9",
+      ek: "1",
+      एक: "1",
+      don: "2",
+      do: "2",
+      दोन: "2",
+      दो: "2",
+      teen: "3",
+      तीन: "3",
+      tin: "3",
+      char: "4",
+      चार: "4",
+      paanch: "5",
+      पाच: "5",
+      sah: "6",
+      सहा: "6",
+      saat: "7",
+      सात: "7",
+      aath: "8",
+      आठ: "8",
+      nau: "9",
+      नऊ: "9",
+      shunya: "0",
+      शून्य: "0",
+    };
+
+    const tokens = lower.split(/\s+/).filter(Boolean);
+    const out = tokens.map((t) => map[t]).filter(Boolean).join("");
+    if (out.length >= 4) return out.slice(-4);
+    return null;
+  };
+
+  const shouldStartSaveFlow = (text) => {
+    const t = String(text || "").toLowerCase();
+    return (
+      t.includes("save") ||
+      t.includes("pin") ||
+      t.includes("login") ||
+      t.includes("register") ||
+      t.includes("account") ||
+      t.includes("सेव") ||
+      t.includes("पिन") ||
+      t.includes("लॉगिन") ||
+      t.includes("खाता") ||
+      t.includes("सेव्ह") ||
+      t.includes("पिन")
+    );
+  };
+
+  const isSkipIntent = (text) => {
+    const t = String(text || "").toLowerCase();
+    return (
+      t.includes("skip") ||
+      t.includes("no") ||
+      t.includes("nah") ||
+      t.includes("nahi") ||
+      t.includes("नहीं") ||
+      t.includes("नाही")
+    );
   };
 
   const authLogin = async ({ phone, pin }) => {
@@ -335,15 +401,15 @@ const AiAssistantPage = () => {
   };
 
   useEffect(() => {
-    if (!authReady) return;
     currentFieldIndexRef.current = 0;
     setCurrentFieldIndex(0);
 
     const welcomeMessage = t("welcomeMessage", { userName });
-    const prompt = t("prompt");
+    const firstField = flowOrder[0];
+    const firstPrompt = getFieldPrompt(firstField, i18n.language);
 
-    setMessages([{ sender: "ai", text: welcomeMessage, prompt }]);
-    speak(`${welcomeMessage} ${prompt}`, i18n.language);
+    setMessages([{ sender: "ai", text: welcomeMessage, prompt: firstPrompt }]);
+    speak(`${welcomeMessage} ${firstPrompt}`, i18n.language);
 
     if ("webkitSpeechRecognition" in window) {
       if (recognitionRef.current) {
@@ -386,10 +452,56 @@ const AiAssistantPage = () => {
   }, [userName, i18n.language, t]);
 
   useEffect(() => {
-    if (!authReady) return;
+    if (!localStorage.getItem("token")) return;
     fetchAndSetProfileName();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authReady]);
+  }, []);
+
+  const rankJobsForProfile = (profile, jobs) => {
+    const title = String(profile?.job_title || "").toLowerCase();
+    const addr = String(profile?.address || "").toLowerCase();
+    const skills = String(profile?.skills || "").toLowerCase();
+    const exp = Number(profile?.experience || 0);
+    const salary = Number(profile?.salary_expectation || 0);
+
+    const scoreJob = (job) => {
+      const jobTitle = String(job?.jobName || job?.title || "").toLowerCase();
+      const jobLoc = String(job?.location || "").toLowerCase();
+      const jobDesc = String(job?.jobDescription || job?.description || "").toLowerCase();
+      const jobSkills = Array.isArray(job?.skillsRequired)
+        ? job.skillsRequired.join(" ").toLowerCase()
+        : String(job?.skillsRequired || "").toLowerCase();
+
+      let s = 0;
+      if (title && (jobTitle.includes(title) || jobDesc.includes(title))) s += 8;
+      if (addr && (jobLoc.includes(addr) || addr.includes(jobLoc))) s += 3;
+      if (skills) {
+        const skillTokens = skills.split(/[\,\s]+/).filter(Boolean);
+        const hay = `${jobDesc} ${jobSkills}`;
+        for (const tok of skillTokens.slice(0, 6)) {
+          if (hay.includes(tok)) s += 1.5;
+        }
+      }
+      if (!Number.isNaN(exp)) {
+        const reqExp = Number(job?.experience || job?.experience_required || 0);
+        if (!Number.isNaN(reqExp)) {
+          if (exp >= reqExp) s += 1;
+          else s -= 1;
+        }
+      }
+      if (!Number.isNaN(salary)) {
+        const jobSalary = Number(String(job?.salary || "").replace(/\D/g, ""));
+        if (!Number.isNaN(jobSalary) && jobSalary > 0) {
+          if (salary <= jobSalary) s += 1;
+        }
+      }
+      return s;
+    };
+
+    return (jobs || [])
+      .slice()
+      .sort((a, b) => scoreJob(b) - scoreJob(a));
+  };
 
   const handleTranscript = async (text) => {
     if (!text || processingLockRef.current) return;
@@ -397,8 +509,172 @@ const AiAssistantPage = () => {
 
     setMessages((prev) => [...prev, { sender: "user", text }]);
 
+    // Account save/login helper flow (voice-first)
+    if (accountAssist.step === "ask_phone") {
+      const lang = i18n.language;
+      if (isSkipIntent(text)) {
+        const msg =
+          lang === "hi"
+            ? "ठीक है। आप अभी बिना PIN के भी सवाल पूछ सकते हैं।"
+            : lang === "mr"
+              ? "ठीक आहे. तुम्ही आता PIN शिवायही प्रश्न विचारू शकता."
+              : "Okay. You can continue without a PIN.";
+        speak(msg, lang);
+        setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+        setAccountAssist({ step: "none", phone: "", pin: "", error: "" });
+        processingLockRef.current = false;
+        return;
+      }
+
+      const phone = normalizePhoneClient(text);
+      if (!phone) {
+        const retry =
+          lang === "hi"
+            ? "कृपया अपना 10 अंकों का मोबाइल नंबर धीरे-धीरे बोलिए। या 'skip' बोलिए।"
+            : lang === "mr"
+              ? "कृपया तुमचा 10 अंकी मोबाइल नंबर हळू बोला. किंवा 'skip' बोला."
+              : "Please say your 10-digit mobile number slowly, or say 'skip'.";
+        speak(retry, lang);
+        setMessages((prev) => [...prev, { sender: "ai", text: retry, prompt: "" }]);
+        processingLockRef.current = false;
+        return;
+      }
+
+      try {
+        setAccountAssist((p) => ({ ...p, step: "working", phone, error: "" }));
+        const res = await fetch(`${server_url}/api/auth/check-phone`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Check failed");
+
+        if (data.exists) {
+          const msg =
+            lang === "hi"
+              ? "यह नंबर पहले से है। कृपया अपना 4 अंकों का PIN बोलिए।"
+              : lang === "mr"
+                ? "हा नंबर आधीपासून आहे. कृपया तुमचा 4 अंकी PIN बोला."
+                : "This number already exists. Please say your 4-digit PIN.";
+          speak(msg, lang);
+          setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+          setAccountAssist({ step: "ask_pin", phone, pin: "", error: "" });
+        } else {
+          const generatedPin = String(Math.floor(1000 + Math.random() * 9000));
+          await authRegister({ phone, pin: generatedPin });
+          await authLogin({ phone, pin: generatedPin });
+
+          // Persist profile to the authenticated account
+          const token = localStorage.getItem("token");
+          if (token) {
+            await axios.post(
+              `${server_url}/api/auth/create-profile`,
+              { ...formDataRef.current, phone },
+              { headers: { Authorization: `Bearer ${token}` } },
+            );
+          }
+
+          setFormData((prev) => ({ ...prev, phone }));
+
+          const msg =
+            lang === "hi"
+              ? `हो गया। आपका PIN है ${generatedPin}. अगली बार आप इसी मोबाइल और PIN से आवाज़ से लॉगिन कर सकते हैं।`
+              : lang === "mr"
+                ? `झाले. तुमचा PIN आहे ${generatedPin}. पुढच्या वेळी हाच मोबाइल आणि PIN वापरून लॉगिन करू शकता.`
+                : `Done. Your PIN is ${generatedPin}. Next time you can login using this mobile and PIN.`;
+          speak(msg, lang);
+          setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+          setAccountAssist({ step: "none", phone: "", pin: "", error: "" });
+        }
+      } catch (e) {
+        const lang = i18n.language;
+        const msg =
+          lang === "hi"
+            ? `माफ़ कीजिए, सेव नहीं हो पाया। ${e.message}`
+            : lang === "mr"
+              ? `माफ करा, सेव करता आले नाही. ${e.message}`
+              : `Sorry, I couldn't save your profile. ${e.message}`;
+        speak(msg, lang);
+        setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+        setAccountAssist({ step: "none", phone: "", pin: "", error: "" });
+      } finally {
+        processingLockRef.current = false;
+      }
+      return;
+    }
+
+    if (accountAssist.step === "ask_pin") {
+      const lang = i18n.language;
+      const pin = parsePinFromSpeech(text);
+      if (!pin) {
+        const retry =
+          lang === "hi"
+            ? "कृपया अपना 4 अंकों का PIN फिर से बोलिए।"
+            : lang === "mr"
+              ? "कृपया तुमचा 4 अंकी PIN पुन्हा बोला."
+              : "Please say your 4-digit PIN again.";
+        speak(retry, lang);
+        setMessages((prev) => [...prev, { sender: "ai", text: retry, prompt: "" }]);
+        processingLockRef.current = false;
+        return;
+      }
+
+      try {
+        await authLogin({ phone: accountAssist.phone, pin });
+
+        const token = localStorage.getItem("token");
+        if (token) {
+          await axios.post(
+            `${server_url}/api/auth/create-profile`,
+            { ...formDataRef.current, phone: accountAssist.phone },
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+        }
+
+        setFormData((prev) => ({ ...prev, phone: accountAssist.phone }));
+
+        const msg =
+          lang === "hi"
+            ? "लॉगिन हो गया। अब आपका प्रोफाइल सेव हो गया है।"
+            : lang === "mr"
+              ? "लॉगिन झाले. आता तुमचा प्रोफाइल सेव झाला आहे."
+              : "Logged in. Your profile is now saved.";
+        speak(msg, lang);
+        setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+        setAccountAssist({ step: "none", phone: "", pin: "", error: "" });
+      } catch (e) {
+        const msg =
+          lang === "hi"
+            ? "PIN गलत है। कृपया फिर से बोलिए।"
+            : lang === "mr"
+              ? "PIN चुकीचा आहे. कृपया पुन्हा बोला."
+              : "Incorrect PIN. Please try again.";
+        speak(msg, lang);
+        setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+      } finally {
+        processingLockRef.current = false;
+      }
+      return;
+    }
+
     // Check if in conversation mode
     if (conversationModeRef.current) {
+      if (shouldStartSaveFlow(text)) {
+        const lang = i18n.language;
+        const msg =
+          lang === "hi"
+            ? "ठीक है। अपना 10 अंकों का मोबाइल नंबर बोलिए। या 'skip' बोलिए।"
+            : lang === "mr"
+              ? "ठीक आहे. तुमचा 10 अंकी मोबाइल नंबर बोला. किंवा 'skip' बोला."
+              : "Okay. Please say your 10-digit mobile number, or say 'skip'.";
+        speak(msg, lang);
+        setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+        setAccountAssist({ step: "ask_phone", phone: "", pin: "", error: "" });
+        processingLockRef.current = false;
+        return;
+      }
+
       try {
         // Call backend to answer based on stored jobs
         const res = await axios.post(`${server_url}/api/voice/answer-job-question`, {
@@ -483,34 +759,46 @@ const AiAssistantPage = () => {
 
             const token = localStorage.getItem("token");
 
-            const profileRes = await axios.post(
-              `${server_url}/api/auth/create-profile`,
-              finalData,
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              },
-            );
+            let createdProfile = null;
+            let recommendedJobs = [];
+            let profileId = null;
 
-            const {
-              profileId,
-              user: createdProfile,
-              recommendedJobs,
-            } = profileRes.data;
+            if (token) {
+              const profileRes = await axios.post(
+                `${server_url}/api/auth/create-profile`,
+                finalData,
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                },
+              );
+
+              ({ profileId, user: createdProfile, recommendedJobs } = profileRes.data);
+            } else {
+              // Guest flow: store locally and fetch public jobs
+              const jobsRes = await axios
+                .get(`${server_url}/api/jobs/public`)
+                .catch(() => axios.get(`${server_url}/api/jobs`));
+              const jobs = jobsRes?.data?.jobs || [];
+              recommendedJobs = rankJobsForProfile(finalData, jobs).slice(0, 5);
+            }
+
+            const profileToStore = createdProfile || finalData;
 
             localStorage.setItem(
               "workerProfile",
               JSON.stringify({
-                profileId,
-                name: createdProfile.name,
-                age: createdProfile.age,
-                address: createdProfile.address,
-                phone: createdProfile.phone,
-                shift_time: createdProfile.shift_time,
-                experience: createdProfile.experience,
-                job_title: createdProfile.job_title,
-                salary_expectation: createdProfile.salary_expectation,
+                profileId: profileId || null,
+                name: profileToStore.name,
+                age: profileToStore.age,
+                address: profileToStore.address,
+                phone: profileToStore.phone,
+                shift_time: profileToStore.shift_time,
+                experience: profileToStore.experience,
+                skills: profileToStore.skills,
+                job_title: profileToStore.job_title,
+                salary_expectation: profileToStore.salary_expectation,
               }),
             );
 
@@ -523,25 +811,40 @@ const AiAssistantPage = () => {
 
             if (recommendedJobs && recommendedJobs.length > 0) {
               const jobCount = recommendedJobs.length;
-              const jobTitles = recommendedJobs.slice(0, 3).map(job => job.jobName || job.title).filter(Boolean).join(", ");
-              
-              jobRecommendationSpeech = lang === "hi" 
-                ? `बधाई हो! आपकी प्रोफाइल बन गई है। मैंने ${jobCount} नौकरियां पाईं: ${jobTitles}। अब आप मुझसे इन नौकरियों के बारे में कोई भी सवाल पूछ सकते हैं।`
-                : lang === "mr"
-                ? `अभिनंदन! तुमची प्रोफाईल तयार झाली आहे। मला ${jobCount} नोकऱ्या मिळाल्या: ${jobTitles}. आता तुम्ही या नोकऱ्यांबद्दल कोणताही प्रश्न विचारू शकता।`
-                : `Congratulations! Your profile has been created. I found ${jobCount} jobs: ${jobTitles}. You can now ask me any questions about these jobs.`;
+              const jobTitles = recommendedJobs
+                .slice(0, 3)
+                .map((job) => job.jobName || job.title)
+                .filter(Boolean)
+                .join(", ");
+
+              jobRecommendationSpeech =
+                lang === "hi"
+                  ? `बधाई हो! आपकी प्रोफाइल तैयार है। मैंने ${jobCount} नौकरियां पाईं: ${jobTitles}। अब आप इन नौकरियों के बारे में कोई भी सवाल पूछ सकते हैं।`
+                  : lang === "mr"
+                    ? `अभिनंदन! तुमची प्रोफाईल तयार आहे। मला ${jobCount} नोकऱ्या मिळाल्या: ${jobTitles}. आता तुम्ही या नोकऱ्यांबद्दल कोणताही प्रश्न विचारू शकता.`
+                    : `Great! Your profile is ready. I found ${jobCount} jobs: ${jobTitles}. You can now ask me any questions about these jobs.`;
             } else {
-              jobRecommendationSpeech = lang === "hi"
-                ? "आपकी प्रोफाइल बन गई है, लेकिन अभी कोई नौकरी नहीं मिली। आप मुझसे नौकरी ढूंढने के बारे में पूछ सकते हैं।"
-                : lang === "mr"
-                ? "तुमची प्रोफाईल तयार झाली आहे, पण सध्या कोणतीही नोकरी मिळाली नाही। तुम्ही मला नोकरी शोधण्याबद्दल विचारू शकता।"
-                : "Your profile has been created, but no jobs found yet. You can ask me about finding jobs.";
+              jobRecommendationSpeech =
+                lang === "hi"
+                  ? "आपकी प्रोफाइल तैयार है, लेकिन अभी कोई नौकरी नहीं मिली। आप मुझसे नौकरी ढूंढने के बारे में पूछ सकते हैं।"
+                  : lang === "mr"
+                    ? "तुमची प्रोफाईल तयार आहे, पण सध्या कोणतीही नोकरी मिळाली नाही. तुम्ही मला नोकरी शोधण्याबद्दल विचारू शकता."
+                    : "Your profile is ready, but no jobs found yet. You can ask me about finding jobs.";
             }
 
-            speak(jobRecommendationSpeech, lang);
+            const saveHint =
+              token
+                ? ""
+                : lang === "hi"
+                  ? "अगर आप चाहें तो अगली बार के लिए PIN बनवा सकते हैं। बोलिए: 'save my profile'."
+                  : lang === "mr"
+                    ? "तुम्हाला पुढच्या वेळेसाठी PIN हवा असेल तर बोला: 'save my profile'."
+                    : "If you want a PIN for next time, say: 'save my profile'.";
+
+            speak(`${jobRecommendationSpeech} ${saveHint}`.trim(), lang);
             setMessages((prev) => [
               ...prev,
-              { sender: "ai", text: jobRecommendationSpeech, prompt: "" },
+              { sender: "ai", text: `${jobRecommendationSpeech} ${saveHint}`.trim(), prompt: "" },
             ]);
           } catch (e) {
             console.error("Profile submission error:", e);
@@ -685,300 +988,6 @@ const AiAssistantPage = () => {
           </div>
           <div className="window-header"></div>
 
-          {!authReady ? (
-            <div className="side-section" style={{ width: "100%" }}>
-              <h3 className="side-title">
-                {i18n.language === "hi"
-                  ? "पहले अपना फोन नंबर डालें"
-                  : i18n.language === "mr"
-                    ? "आधी फोन नंबर टाका"
-                    : "Enter your phone number first"}
-              </h3>
-              <div className="captured-summary">
-                <div className="summary-row" style={{ gap: 12, alignItems: "center" }}>
-                  <span className="summary-label">
-                    {i18n.language === "hi"
-                      ? "फोन"
-                      : i18n.language === "mr"
-                        ? "फोन"
-                        : "Phone"}
-                    :
-                  </span>
-                  <input
-                    type="text"
-                    value={authGate.phone}
-                    onChange={(e) =>
-                      setAuthGate((p) => ({ ...p, phone: e.target.value, error: "" }))
-                    }
-                    placeholder={
-                      i18n.language === "hi"
-                        ? "10 अंकों का नंबर"
-                        : i18n.language === "mr"
-                          ? "10 अंकी नंबर"
-                          : "10-digit number"
-                    }
-                    style={{
-                      flex: 1,
-                      padding: "10px 12px",
-                      borderRadius: 10,
-                      border: "1px solid #e5e7eb",
-                    }}
-                  />
-                </div>
-
-                {authGate.step !== "check" && (
-                  <div className="summary-row" style={{ gap: 12, alignItems: "center" }}>
-                    <span className="summary-label">
-                      {i18n.language === "hi"
-                        ? "PIN"
-                        : i18n.language === "mr"
-                          ? "PIN"
-                          : "PIN"}
-                      :
-                    </span>
-                    <input
-                      type="password"
-                      value={authGate.pin}
-                      onChange={(e) =>
-                        setAuthGate((p) => ({ ...p, pin: e.target.value, error: "" }))
-                      }
-                      placeholder={
-                        i18n.language === "hi"
-                          ? "4 अंकों का PIN"
-                          : i18n.language === "mr"
-                            ? "4 अंकी PIN"
-                            : "4-digit PIN"
-                      }
-                      style={{
-                        flex: 1,
-                        padding: "10px 12px",
-                        borderRadius: 10,
-                        border: "1px solid #e5e7eb",
-                      }}
-                    />
-                  </div>
-                )}
-
-                {authGate.error ? (
-                  <div style={{ color: "#b91c1c", marginTop: 8, fontSize: 14 }}>
-                    {authGate.error}
-                  </div>
-                ) : null}
-
-                <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-                  {authGate.step === "check" ? (
-                    <button
-                      className="control-button mic-btn"
-                      style={{ width: "auto", padding: "10px 14px" }}
-                      disabled={authGate.loading}
-                      onClick={async () => {
-                        const phone = normalizePhoneClient(authGate.phone);
-                        if (!phone) {
-                          setAuthGate((p) => ({
-                            ...p,
-                            error:
-                              i18n.language === "hi"
-                                ? "कृपया सही 10 अंकों का फोन नंबर डालें"
-                                : i18n.language === "mr"
-                                  ? "कृपया योग्य 10 अंकी फोन नंबर टाका"
-                                  : "Please enter a valid 10-digit phone number",
-                          }));
-                          return;
-                        }
-
-                        setAuthGate((p) => ({ ...p, loading: true, error: "" }));
-                        try {
-                          const res = await fetch(`${server_url}/api/auth/check-phone`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ phone }),
-                          });
-                          const data = await res.json();
-                          if (!res.ok) throw new Error(data.message || "Check failed");
-
-                          if (data.exists) {
-                            setAuthGate((p) => ({
-                              ...p,
-                              exists: true,
-                              profileName: data.profileName || null,
-                              step: "login",
-                              loading: false,
-                            }));
-
-                            if (data.profileName) {
-                              const msg =
-                                i18n.language === "hi"
-                                  ? `यह नंबर ${data.profileName} के नाम पर है। कृपया PIN डालें।`
-                                  : i18n.language === "mr"
-                                    ? `हा नंबर ${data.profileName} साठी आहे. कृपया PIN टाका.`
-                                    : `This number belongs to ${data.profileName}. Please enter your PIN.`;
-                              speak(msg, i18n.language);
-                            }
-                          } else {
-                            setAuthGate((p) => ({
-                              ...p,
-                              exists: false,
-                              profileName: null,
-                              step: "register",
-                              loading: false,
-                            }));
-
-                            const msg =
-                              i18n.language === "hi"
-                                ? "यह नया नंबर है। कृपया 4 अंकों का PIN बनाइए।"
-                                : i18n.language === "mr"
-                                  ? "हा नवीन नंबर आहे. कृपया 4 अंकी PIN तयार करा."
-                                  : "New number. Please create a 4-digit PIN.";
-                            speak(msg, i18n.language);
-                          }
-                        } catch (e) {
-                          setAuthGate((p) => ({ ...p, loading: false, error: e.message }));
-                        }
-                      }}
-                    >
-                      {authGate.loading
-                        ? i18n.language === "hi"
-                          ? "जांच हो रही है..."
-                          : i18n.language === "mr"
-                            ? "तपासत आहे..."
-                            : "Checking..."
-                        : i18n.language === "hi"
-                          ? "आगे बढ़ें"
-                          : i18n.language === "mr"
-                            ? "पुढे जा"
-                            : "Continue"}
-                    </button>
-                  ) : (
-                    <button
-                      className="control-button mic-btn"
-                      style={{ width: "auto", padding: "10px 14px" }}
-                      disabled={authGate.loading}
-                      onClick={async () => {
-                        const phone = normalizePhoneClient(authGate.phone);
-                        if (!phone) {
-                          setAuthGate((p) => ({
-                            ...p,
-                            error:
-                              i18n.language === "hi"
-                                ? "कृपया सही 10 अंकों का फोन नंबर डालें"
-                                : i18n.language === "mr"
-                                  ? "कृपया योग्य 10 अंकी फोन नंबर टाका"
-                                  : "Please enter a valid 10-digit phone number",
-                          }));
-                          return;
-                        }
-                        if (!authGate.pin || authGate.pin.length < 4) {
-                          setAuthGate((p) => ({
-                            ...p,
-                            error:
-                              i18n.language === "hi"
-                                ? "PIN कम से कम 4 अंकों का होना चाहिए"
-                                : i18n.language === "mr"
-                                  ? "PIN किमान 4 अंकांचा असावा"
-                                  : "PIN must be at least 4 digits",
-                          }));
-                          return;
-                        }
-
-                        setAuthGate((p) => ({ ...p, loading: true, error: "" }));
-                        try {
-                          if (authGate.step === "register") {
-                            await authRegister({ phone, pin: authGate.pin });
-                          }
-                          await authLogin({ phone, pin: authGate.pin });
-                          setAuthReady(true);
-                          setAuthGate((p) => ({ ...p, loading: false }));
-
-                          // Friendly voice confirmation after successful login
-                          const nameToSpeak = authGate.profileName;
-                          if (nameToSpeak) {
-                            const msg =
-                              i18n.language === "hi"
-                                ? `स्वागत है ${nameToSpeak}`
-                                : i18n.language === "mr"
-                                  ? `स्वागत आहे ${nameToSpeak}`
-                                  : `Welcome back ${nameToSpeak}`;
-                            speak(msg, i18n.language);
-                            setUserName(nameToSpeak);
-                          }
-                        } catch (e) {
-                          setAuthGate((p) => ({ ...p, loading: false, error: e.message }));
-                        }
-                      }}
-                    >
-                      {authGate.loading
-                        ? i18n.language === "hi"
-                          ? "हो रहा है..."
-                          : i18n.language === "mr"
-                            ? "चालू आहे..."
-                            : "Please wait..."
-                        : authGate.step === "login"
-                          ? i18n.language === "hi"
-                            ? "लॉगिन"
-                            : i18n.language === "mr"
-                              ? "लॉगिन"
-                              : "Login"
-                          : i18n.language === "hi"
-                            ? "खाता बनाएं"
-                            : i18n.language === "mr"
-                              ? "खाते तयार करा"
-                              : "Create account"}
-                    </button>
-                  )}
-
-                  {authGate.step !== "check" ? (
-                    <button
-                      className="control-button"
-                      style={{ width: "auto", padding: "10px 14px" }}
-                      disabled={authGate.loading}
-                      onClick={() =>
-                        setAuthGate({
-                          phone: authGate.phone,
-                          pin: "",
-                          step: "check",
-                          loading: false,
-                          error: "",
-                          exists: null,
-                          profileName: null,
-                        })
-                      }
-                    >
-                      {i18n.language === "hi"
-                        ? "बदलें"
-                        : i18n.language === "mr"
-                          ? "बदला"
-                          : "Change"}
-                    </button>
-                  ) : null}
-                </div>
-
-                {authGate.step === "login" ? (
-                  <div style={{ marginTop: 10, color: "#6b7280", fontSize: 14 }}>
-                    {authGate.profileName
-                      ? i18n.language === "hi"
-                        ? `यह नंबर ${authGate.profileName} के नाम पर है। PIN डालें।`
-                        : i18n.language === "mr"
-                          ? `हा नंबर ${authGate.profileName} साठी आहे. PIN टाका.`
-                          : `This number belongs to ${authGate.profileName}. Enter PIN.`
-                      : i18n.language === "hi"
-                        ? "यह नंबर पहले से है। PIN डालें।"
-                        : i18n.language === "mr"
-                          ? "हा नंबर आधीपासून आहे. PIN टाका."
-                          : "This number already exists. Enter PIN."}
-                  </div>
-                ) : authGate.step === "register" ? (
-                  <div style={{ marginTop: 10, color: "#6b7280", fontSize: 14 }}>
-                    {i18n.language === "hi"
-                      ? "यह नया नंबर है। 4 अंकों का PIN बनाइए और आगे बढ़िए।"
-                      : i18n.language === "mr"
-                        ? "हा नवीन नंबर आहे. 4 अंकी PIN तयार करा आणि पुढे जा."
-                        : "New number. Create a 4-digit PIN to continue."}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          ) : (
-            <>
           <div className={`sphere ${isListening ? "listening" : ""}`}>
             <video
               className="voice-orb"
@@ -1076,6 +1085,14 @@ const AiAssistantPage = () => {
                   <span className="summary-value">{formData.experience}</span>
                 </div>
               )}
+              {formData.skills && (
+                <div className="summary-row">
+                  <span className="summary-label">
+                    {t("assistantPage.labels.skills", { defaultValue: "Skills" })}:
+                  </span>
+                  <span className="summary-value">{formData.skills}</span>
+                </div>
+              )}
               {formData.job_title && (
                 <div className="summary-row">
                   <span className="summary-label">
@@ -1096,8 +1113,6 @@ const AiAssistantPage = () => {
               )}
             </div>
           </div>
-            </>
-          )}
         </div>
 
         {/* Conversation panel */}
