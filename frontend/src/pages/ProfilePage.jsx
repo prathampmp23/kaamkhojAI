@@ -8,7 +8,7 @@ import Footer from "../components/Footer";
 import axios from "axios";
 import "./ProfilePage.css";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_URL = import.meta.env.VITE_API_URL || "https://kaamkhojaibackend.onrender.com";
 
 const JOB_TITLE_OPTIONS = [
   "driver",

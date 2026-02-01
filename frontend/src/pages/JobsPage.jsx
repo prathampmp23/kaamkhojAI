@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import "./JobsPage.css";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_URL = import.meta.env.VITE_API_URL || "https://kaamkhojaibackend.onrender.com";
 const PAGE_SIZE = 9;
 
 const JobsPage = () => {
