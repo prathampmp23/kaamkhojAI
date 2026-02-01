@@ -32,6 +32,12 @@ const jobSchema = new mongoose.Schema(
       trim: true,
     },
 
+    contactPhone: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+
     category: {
       type: String,
       enum: [

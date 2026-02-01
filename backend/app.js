@@ -13,8 +13,20 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// --- Connect to MongoDB ---
-connectDB();
+// --- Connect to MongoDB (await before starting server) ---
+const start = async () => {
+  try {
+    await connectDB();
+  } catch (e) {
+    console.error('Failed to connect MongoDB. Exiting.', e?.message || e);
+    process.exit(1);
+  }
+
+  // --- Start Server ---
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  });
+};
 
 // allowed frontend URLs
 const allowedOrigins = [
@@ -69,7 +81,4 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, "client/dist/index.html"));
 });
 
-// --- Start Server ---
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+start();

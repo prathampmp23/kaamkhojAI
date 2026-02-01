@@ -33,6 +33,34 @@ const generateUsernameFromPhone = async (phone) => {
   return `${base}_${Math.floor(Math.random() * 9000 + 1000)}`;
 };
 
+const tryAutoLinkProfileByPhone = async (authUser) => {
+  try {
+    if (!authUser || authUser.profileId) return null;
+
+    const normalized = normalizePhone(authUser.phone);
+    if (!normalized) return null;
+
+    // Safety: only auto-link if we can identify EXACTLY one matching profile.
+    // User.phone is not unique historically, so avoid accidentally linking someone else's profile.
+    const exact = await User.find({ phone: normalized }).sort({ createdAt: -1 }).limit(2);
+    if (exact.length === 0) return null;
+    if (exact.length > 1) return null;
+
+    const profile = exact[0];
+
+    await AuthUser.findByIdAndUpdate(authUser._id, {
+      profileId: profile._id,
+      profileCompleted: true,
+      phone: normalized,
+    });
+
+    return profile;
+  } catch (e) {
+    console.error('[WARN tryAutoLinkProfileByPhone] Failed:', e);
+    return null;
+  }
+};
+
 // Check if a phone already has an account (used by AI assistant flow)
 const checkPhone = async (req, res) => {
   try {
@@ -45,7 +73,7 @@ const checkPhone = async (req, res) => {
     }
 
     const authUser = await AuthUser.findOne({ phone }).select(
-      "_id role profileCompleted profileId"
+      "_id role profileCompleted profileId phone"
     );
 
     if (!authUser) {
@@ -56,8 +84,13 @@ const checkPhone = async (req, res) => {
     }
 
     let profileName = null;
-    if (authUser.profileId) {
-      const profile = await User.findById(authUser.profileId).select("name");
+    let effectiveProfileId = authUser.profileId;
+    if (!effectiveProfileId) {
+      const linked = await tryAutoLinkProfileByPhone(authUser);
+      effectiveProfileId = linked?._id || null;
+      profileName = linked?.name || null;
+    } else {
+      const profile = await User.findById(effectiveProfileId).select("name");
       profileName = profile?.name || null;
     }
 
@@ -401,6 +434,8 @@ const createProfile = async (req, res) => {
       }
     }
 
+    const profilePhoneToStore = normalizedProfilePhone || authUser.phone || phone;
+
     let userProfile;
 
     if (authUser.profileId) {
@@ -413,7 +448,7 @@ const createProfile = async (req, res) => {
           name,
           age: numericAge,
           address,
-          phone,
+          phone: profilePhoneToStore,
           shift_time,
           experience: numericExp,
           job_title,
@@ -430,7 +465,7 @@ const createProfile = async (req, res) => {
           name,
           age: numericAge,
           address,
-          phone,
+          phone: profilePhoneToStore,
           shift_time,
           experience: numericExp,
           job_title,
@@ -455,7 +490,7 @@ const createProfile = async (req, res) => {
         name,
         age: numericAge,
         address,
-        phone,
+        phone: profilePhoneToStore,
         shift_time,
         experience: numericExp,
         job_title,
@@ -500,6 +535,10 @@ const getUserProfile = async (req, res) => {
   try {
     const authUser = req.user;
     if (!authUser?.profileId) {
+      const linked = await tryAutoLinkProfileByPhone(authUser);
+      if (linked) {
+        return res.status(200).json({ success: true, profile: linked });
+      }
       return res.status(200).json({ success: true, profile: null });
     }
 

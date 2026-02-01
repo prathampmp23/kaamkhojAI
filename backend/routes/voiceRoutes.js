@@ -381,58 +381,164 @@ router.post("/answer-job-question", async (req, res) => {
       });
     }
 
-    // Create context from jobs data
-    const jobsContext = jobs.map((job, idx) => {
-      return `Job ${idx + 1}:
-- Title: ${job.jobName || job.title || 'Not specified'}
-- Company: ${job.company || 'Not specified'}
-- Salary: ${job.salary || 'Not specified'}
-- Location: ${job.location || 'Not specified'}
-- Shift: ${job.shift_time || 'Not specified'}
-- Experience Required: ${job.experience_required || 'Not specified'}
-- Description: ${job.description || 'Not specified'}`;
-    }).join('\n\n');
+    const langKey = language === "hi" ? "hi" : language === "mr" ? "mr" : "en";
 
-    const systemPrompt = `You are a helpful job assistant for illiterate workers. 
-Answer questions about jobs in simple, clear language.
+    const t = {
+      hi: {
+        notSpecified: "उल्लेख नहीं है",
+        noSalaryToCompare: "इन नौकरियों में सैलरी का साफ़ जानकारी नहीं है, इसलिए तुलना नहीं कर सकता।",
+        lowestSalaryPrefix: "सबसे कम सैलरी वाली नौकरी:",
+      },
+      mr: {
+        notSpecified: "नमूद नाही",
+        noSalaryToCompare: "या नोकऱ्यांमध्ये पगाराची स्पष्ट माहिती नाही, म्हणून तुलना करू शकत नाही.",
+        lowestSalaryPrefix: "सर्वात कमी पगाराची नोकरी:",
+      },
+      en: {
+        notSpecified: "Not specified",
+        noSalaryToCompare: "Salary is not clearly available in these jobs, so I can't compare.",
+        lowestSalaryPrefix: "Lowest salary job:",
+      },
+    };
+
+    const toStr = (v) => (v === null || v === undefined ? "" : String(v));
+
+    const parseMinSalary = (salaryRaw) => {
+      const s = toStr(salaryRaw).replace(/,/g, " ");
+      if (!s) return null;
+      // Extract numbers like 12000, 12 000, 12k
+      const kMatch = s.match(/(\d+(?:\.\d+)?)\s*k\b/i);
+      if (kMatch) {
+        const n = Number(kMatch[1]);
+        return Number.isFinite(n) ? Math.round(n * 1000) : null;
+      }
+      const nums = s.match(/\d{3,6}/g);
+      if (!nums || nums.length === 0) return null;
+      const values = nums
+        .map((x) => Number(x))
+        .filter((n) => Number.isFinite(n));
+      if (values.length === 0) return null;
+      return Math.min(...values);
+    };
+
+    const isLowestSalaryQuestion = (q) => {
+      const lower = toStr(q).toLowerCase();
+      return (
+        /lowest\s+salary|least\s+salary|min(?:imum)?\s+salary|cheapest\s+job/.test(lower) ||
+        /सबसे\s*कम|कम\s*सैलरी|न्यूनतम\s*सैलरी/.test(q) ||
+        /सर्वात\s*कमी|कमी\s*पगार|किमान\s*पगार/.test(q)
+      );
+    };
+
+    if (Array.isArray(jobs) && jobs.length > 0 && isLowestSalaryQuestion(question)) {
+      const withParsed = jobs
+        .map((job, idx) => ({
+          idx,
+          job,
+          minSalary: parseMinSalary(job?.salary),
+        }))
+        .filter((x) => x.minSalary !== null);
+
+      if (withParsed.length === 0) {
+        return res.json({ success: true, answer: t[langKey].noSalaryToCompare });
+      }
+
+      withParsed.sort((a, b) => a.minSalary - b.minSalary);
+      const best = withParsed[0];
+      const title = best.job?.jobName || best.job?.title || best.job?.jobTitle || t[langKey].notSpecified;
+      const company = best.job?.company || best.job?.companyName || t[langKey].notSpecified;
+      const loc = best.job?.location || t[langKey].notSpecified;
+      const salaryLabel = best.job?.salary || t[langKey].notSpecified;
+
+      const answer =
+        langKey === "hi"
+          ? `${t.hi.lowestSalaryPrefix} जॉब ${best.idx + 1} (${title}), कंपनी: ${company}, लोकेशन: ${loc}, सैलरी: ${salaryLabel}`
+          : langKey === "mr"
+            ? `${t.mr.lowestSalaryPrefix} नोकरी ${best.idx + 1} (${title}), कंपनी: ${company}, ठिकाण: ${loc}, पगार: ${salaryLabel}`
+            : `${t.en.lowestSalaryPrefix} Job ${best.idx + 1} (${title}), Company: ${company}, Location: ${loc}, Salary: ${salaryLabel}`;
+
+      return res.json({ success: true, answer });
+    }
+
+// Create context from jobs data (use correct field names from schema)
+const jobsContext = (Array.isArray(jobs) ? jobs : []).map((job, idx) => {
+  const title = job.jobName || job.title || job.jobTitle || t[langKey].notSpecified;
+  const company = job.company || job.companyName || t[langKey].notSpecified;
+  const salary = job.salary || t[langKey].notSpecified;
+  const location = job.location || t[langKey].notSpecified;
+  const shift = job.availability || job.shift_time || t[langKey].notSpecified;
+  const expReq = job.experience || job.experience_required || t[langKey].notSpecified;
+  const desc = job.jobDescription || job.description || t[langKey].notSpecified;
+  const contactPhone =
+    job.contactPhone ||
+    job.postedByPhone ||
+    job.postedBy?.phone ||
+    t[langKey].notSpecified;
+
+  return `Job ${idx + 1}:
+- Title: ${title}
+- Company: ${company}
+- Salary: ${salary}
+- Location: ${location}
+- Shift/Availability: ${shift}
+- Experience Required: ${expReq}
+- Contact Phone: ${contactPhone}
+- Description: ${desc}`;
+}).join("\n\n");
+
+
+    const langName = language === "hi" ? "Hindi" : language === "mr" ? "Marathi" : "English";
+
+    const systemPrompt = `You are a helpful voice job assistant for illiterate workers.
+Answer questions about jobs using ONLY the provided job data.
 
 User Profile:
-- Name: ${profile.name}
-- Job Looking For: ${profile.job_title}
-- Experience: ${profile.experience} years
-- Salary Expectation: ${profile.salary_expectation}
-- Preferred Shift: ${profile.shift_time}
+- Name: ${profile?.name || ""}
+- Job Looking For: ${profile?.job_title || ""}
+- Experience: ${profile?.experience ?? ""}
+- Salary Expectation: ${profile?.salary_expectation ?? ""}
+- Preferred Shift: ${profile?.shift_time || ""}
 
 Available Jobs:
 ${jobsContext}
 
 Rules:
-1. Answer in ${language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English'}
-2. Use simple, conversational language
-3. If asked about a specific job, mention job number and details
-4. If asked which job is best, recommend based on user's profile
-5. If asked about salary, shift, location, etc., provide accurate info from the jobs
-6. Be encouraging and helpful
-7. Keep answers brief and clear
+1. Answer in ${langName}
+2. Keep the answer short and easy
+3. If user asks about salary/shift/location/company, use exact job details
+4. If user asks "best job", recommend based on profile and explain in one line
+5. If data is missing for a field, say "not specified" (in the same language)
+6. Do NOT invent job details
+7. Mention job number when referring to a job
+`;
 
-User Question: "${question}"`;
-
-    const response = await fetch("http://localhost:11434/api/generate", {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "HTTP-Referer": process.env.FRONTEND_URL || "http://localhost:3000",
+        "X-Title": process.env.YOUR_APP_NAME || "KaamKhoj",
+      },
       body: JSON.stringify({
-        model: "llama3.2",
-        prompt: systemPrompt,
-        stream: false,
-        options: {
-          temperature: 0.7,
-          max_tokens: 300,
-        },
+        model: "meta-llama/llama-3.3-70b-instruct",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: String(question) },
+        ],
+        temperature: 0.3,
+        max_tokens: 350,
       }),
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("OpenRouter answer-job-question error:", response.status, errorText);
+      throw new Error(`AI API error: ${response.status}`);
+    }
+
     const data = await response.json();
-    const answer = data.response?.trim() || "I couldn't generate an answer.";
+    const answer = (data.choices?.[0]?.message?.content || "").trim() || "I couldn't generate an answer.";
 
     res.json({
       success: true,

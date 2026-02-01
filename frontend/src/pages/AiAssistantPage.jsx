@@ -8,15 +8,14 @@ import axios from "axios";
 import server from "../environment";
 import { useAuthContext } from "../context/AuthContext";
 
-const flowOrder = [
+const profileFlowOrder = [
   "name",
-  "age",
-  "address",
-  "shift_time",
   "experience",
-  "skills",
   "job_title",
+  "shift_time",
   "salary_expectation",
+  "address",
+  "age",
 ];
 
 const getFieldPrompt = (field, lang) => {
@@ -45,11 +44,6 @@ const getFieldPrompt = (field, lang) => {
       en: "How many years of experience do you have?",
       hi: "आपके पास कितने साल का अनुभव है?",
       mr: "तुमच्याकडे किती वर्षांचा अनुभव आहे?",
-    },
-    skills: {
-      en: "Tell me your skills or work you can do (for example: driving, cooking, cleaning).",
-      hi: "अपनी स्किल्स या आप कौन सा काम कर सकते हैं बताइए (जैसे: ड्राइविंग, खाना बनाना, सफाई)।",
-      mr: "तुमच्या कौशल्या/तुम्ही कोणते काम करू शकता ते सांगा (उदा: ड्रायव्हिंग, स्वयंपाक, साफसफाई).",
     },
     job_title: {
       en: "Which job type are you looking for (e.g., driver, cook, security)?",
@@ -94,11 +88,6 @@ const getRetryPrompt = (field, lang) => {
       hi: "बताइए कितने साल का अनुभव है।",
       mr: "किती वर्षांचा अनुभव आहे ते सांगा.",
     },
-    skills: {
-      en: "Please tell your skills again. Keep it short (2 to 5 skills).",
-      hi: "कृपया अपनी स्किल्स फिर से बताइए। 2 से 5 स्किल्स बोलिए।",
-      mr: "कृपया तुमची कौशल्ये पुन्हा सांगा. 2 ते 5 कौशल्ये सांगा.",
-    },
     job_title: {
       en: "Say your desired job type again.",
       hi: "अपनी नौकरी का प्रकार फिर से बोलिए।",
@@ -140,7 +129,6 @@ const AiAssistantPage = () => {
     phone: "",
     shift_time: "",
     experience: "",
-    skills: "",
     job_title: "",
     salary_expectation: "",
   });
@@ -150,6 +138,37 @@ const AiAssistantPage = () => {
   const [conversationMode, setConversationMode] = useState(false);
   const [storedJobs, setStoredJobs] = useState([]);
   const conversationModeRef = useRef(false);
+  const storedJobsRef = useRef([]);
+  const [selectedJobIndex, setSelectedJobIndex] = useState(null);
+
+  const hasInitializedRef = useRef(false);
+  const SESSION_KEY = "kaamkhoj_ai_assistant_session_v1";
+
+  useEffect(() => {
+    storedJobsRef.current = Array.isArray(storedJobs) ? storedJobs : [];
+  }, [storedJobs]);
+
+  const clearAssistantSession = () => {
+    try {
+      localStorage.removeItem("token");
+      localStorage.removeItem("isLoggedIn");
+      localStorage.removeItem("user");
+      localStorage.removeItem("workerProfile");
+    } catch {}
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+  };
+
+  useEffect(() => {
+    // Persist the assistant UI session (not auth). Keeps history when user switches language.
+    try {
+      const payload = {
+        messages: Array.isArray(messages) ? messages.slice(-200) : [],
+        selectedJobIndex,
+      };
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+    } catch {}
+  }, [messages, selectedJobIndex]);
 
   useEffect(() => {
     formDataRef.current = formData;
@@ -168,12 +187,16 @@ const AiAssistantPage = () => {
   const [voicesLoaded, setVoicesLoaded] = useState(false);
   const isActiveRef = useRef(true);
 
-  const [accountAssist, setAccountAssist] = useState({
-    step: "none", // none | ask_phone | ask_pin | working
+  const [authFlow, setAuthFlow] = useState({
+    stage: "ask_phone", // ask_phone | ask_pin | collect_profile | loading
     phone: "",
-    pin: "",
-    error: "",
+    profileName: null,
+    exists: null,
   });
+  const authFlowRef = useRef(authFlow);
+  useEffect(() => {
+    authFlowRef.current = authFlow;
+  }, [authFlow]);
 
   const normalizePhoneClient = (value) => {
     const digits = String(value || "").replace(/\D/g, "");
@@ -229,33 +252,229 @@ const AiAssistantPage = () => {
     return null;
   };
 
-  const shouldStartSaveFlow = (text) => {
-    const t = String(text || "").toLowerCase();
+  const say = (en, hi, mr) => {
+    const lang = i18n.language;
+    if (lang === "hi") return hi;
+    if (lang === "mr") return mr;
+    return en;
+  };
+
+  const normalizeText = (value) =>
+    String(value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const isLocationJobsRequest = (q) => {
+    const raw = String(q || "");
+    const n = normalizeText(raw);
     return (
-      t.includes("save") ||
-      t.includes("pin") ||
-      t.includes("login") ||
-      t.includes("register") ||
-      t.includes("account") ||
-      t.includes("सेव") ||
-      t.includes("पिन") ||
-      t.includes("लॉगिन") ||
-      t.includes("खाता") ||
-      t.includes("सेव्ह") ||
-      t.includes("पिन")
+      /which.*jobs.*in|jobs.*in|in\s+[a-z]+\s+jobs/.test(n) ||
+      (/(pune|mumbai|nagpur|delhi)/.test(n) && /(job|jobs|naukri|naukriya)/.test(n)) ||
+      /मे\s*कौन\s*सी\s*नौकरी|में\s*कौन\s*सी\s*नौकरी|कौन\s*सी\s*नौकरी.*(पुणे|मुंबई|नागपुर|दिल्ली)/.test(raw) ||
+      /(पुणे|मुंबई|नागपुर|दिल्ली).*नौकरी\s*कौन\s*सी/.test(raw) ||
+      /(पुणे|मुंबई|नागपुर|दिल्ली)/.test(raw) && /नौकरी|जॉब|jobs?/i.test(raw)
     );
   };
 
-  const isSkipIntent = (text) => {
-    const t = String(text || "").toLowerCase();
+  const extractCityFromQuestion = (q) => {
+    const raw = String(q || "");
+    const lower = raw.toLowerCase();
+    if (/pune|पुणे/.test(raw)) return "pune";
+    if (/mumbai|मुंबई/.test(raw)) return "mumbai";
+    if (/nagpur|नागपुर/.test(raw)) return "nagpur";
+    if (/delhi|दिल्ली/.test(raw)) return "delhi";
+
+    // Basic English fallback: "in <city>"
+    const m = lower.match(/\bin\s+([a-z]{3,})\b/);
+    if (m) return m[1];
+    return null;
+  };
+
+  const isShowJobsRequest = (q) => {
+    const raw = String(q || "");
+    const n = normalizeText(raw);
     return (
-      t.includes("skip") ||
-      t.includes("no") ||
-      t.includes("nah") ||
-      t.includes("nahi") ||
-      t.includes("नहीं") ||
-      t.includes("नाही")
+      /show( me)? (the )?(recommended )?jobs|list (the )?jobs|recommended jobs/.test(n) ||
+      /jobs? dikha|job(s)? dikhana|naukri(ya)? dikha|नौकर(ी|ि)या(ँ|ं)?|नौकरी.*दिखा|रिकमेंड.*(जॉब|नौकरी)|जॉब.*शो/.test(raw) ||
+      /नोकऱ्या.*दाखव|रिकमेंड.*(नोकरी|जॉब)/.test(raw)
     );
+  };
+
+  const isJobDetailsRequest = (q) => {
+    const raw = String(q || "");
+    const n = normalizeText(raw);
+    return (
+      /details|full details|more info|information|show details/.test(n) ||
+      /detail(s)? dikha|poori detail|पूरा विवरण|डिटेल(्स)?|डिटेल.*दिखा|विवरण.*दिखा|details.*show/.test(raw) ||
+      /सविस्तर|डिटेल.*दाखव|माहिती.*दाखव/.test(raw)
+    );
+  };
+
+  const detectJobKeyword = (q) => {
+    const raw = String(q || "");
+    const n = normalizeText(raw);
+
+    const mappings = [
+      { key: "personal driver", patterns: [/personal\s+driver/, /पर्सनल\s*ड्राइवर/, /पर्सनल\s*ड्रायव्हर/] },
+      { key: "delivery driver", patterns: [/delivery\s+driver/, /डिलीवरी\s*ड्राइवर/, /डिलिव्हरी\s*ड्रायव्हर/] },
+      { key: "truck driver", patterns: [/truck\s+driver/, /ट्रक\s*ड्राइवर/, /ट्रक\s*ड्रायव्हर/] },
+      { key: "driver", patterns: [/\bdriver\b/, /ड्राइवर/, /ड्रायव्हर/, /चालक/] },
+      { key: "security", patterns: [/\bsecurity\b/, /guard/, /सिक्योरिटी/, /सुरक्षा/, /रक्षक/] },
+      { key: "cook", patterns: [/\bcook\b/, /chef/, /रसोइया/, /स्वयंपाकी/] },
+      { key: "cleaner", patterns: [/\bcleaner\b/, /सफाई/, /cleaning/, /सफाईवाला/, /सफाईवाली/] },
+    ];
+
+    for (const m of mappings) {
+      if (m.patterns.some((p) => (p instanceof RegExp ? p.test(raw) || p.test(n) : false))) {
+        return m.key;
+      }
+    }
+    return null;
+  };
+
+  const extractCategoryFromQuestion = (q) => {
+    const raw = String(q || "");
+    const n = normalizeText(raw);
+
+    const categories = [
+      { key: "driver", patterns: [/\bdriver\b/, /ड्राइवर/, /ड्रायव्हर/, /चालक/] },
+      { key: "cook", patterns: [/\bcook\b/, /chef/, /रसोइया/, /स्वयंपाकी/] },
+      { key: "cleaner", patterns: [/\bcleaner\b/, /cleaning/, /सफाई/, /सफाईवाला/, /सफाईवाली/] },
+      { key: "gardener", patterns: [/\bgardener\b/, /garden/, /माली/, /बागकाम/] },
+      { key: "plumber", patterns: [/\bplumber\b/, /प्लंबर/, /नळकाम/] },
+      { key: "electrician", patterns: [/\belectrician\b/, /इलेक्ट्रीशियन/, /वीज/] },
+      { key: "security", patterns: [/\bsecurity\b/, /guard/, /सिक्योरिटी/, /सुरक्षा/, /रक्षक/] },
+      { key: "factory", patterns: [/\bfactory\b/, /manufactur/, /फॅक्टरी/, /कारखाना/] },
+      { key: "construction", patterns: [/\bconstruction\b/, /builder/, /मजदूर/, /बांधकाम/] },
+      { key: "house-help", patterns: [/house\s*help/, /maid/, /घरकाम/, /घराबाई/] },
+      { key: "office-helper", patterns: [/office\s*help/, /helper/, /assistant/, /ऑफिस\s*हेल्पर/] },
+    ];
+
+    for (const c of categories) {
+      if (c.patterns.some((p) => p.test(raw) || p.test(n))) return c.key;
+    }
+    return null;
+  };
+
+  const searchJobsFromServer = async ({ location, category, q, limit = 10 }) => {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Authentication token missing");
+
+    const params = new URLSearchParams();
+    if (location) params.set("location", location);
+    if (category) params.set("category", category);
+    if (q) params.set("q", q);
+    params.set("limit", String(limit));
+
+    const res = await fetch(`${server_url}/api/jobs/search?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Search failed");
+    return Array.isArray(data.jobs) ? data.jobs : [];
+  };
+
+  const isAnyOneJobInfoRequest = (q) => {
+    const raw = String(q || "");
+    const n = normalizeText(raw);
+    return (
+      /any\s*one|one\s*job|show\s*(me\s*)?a\s*job|job\s*info/.test(n) ||
+      /किसी\s*भी\s*एक|कोई\s*एक|एक\s*नौकरी|एक\s*जॉब|जानकारी\s*शो|जानकारी\s*दिखा/.test(raw) ||
+      /कोणतीही\s*एक|एक\s*नोकरी|माहिती\s*दाखव/.test(raw)
+    );
+  };
+
+  const isContactRequest = (q) => {
+    const raw = String(q || "");
+    const n = normalizeText(raw);
+    return (
+      /contact|phone|number|call|mobile|whatsapp/.test(n) ||
+      /contact.*detail|contact.*number|job giver.*number/.test(n) ||
+      /कॉन्टैक्ट|कॉन्टेक्ट|फोन|मोबाइल|नंबर|व्हाट्सएप|कॉल|जॉब\s*गिवर\s*नंबर|मालिक\s*का\s*नंबर|कंपनी\s*का\s*नंबर/.test(raw) ||
+      /काँटॅक्ट|फोन|मोबाईल|क्रमांक|व्हॉट्सअॅप|कॉल|मालक.*क्रमांक/.test(raw)
+    );
+  };
+
+  const getJobContactPhone = (job) => {
+    return (
+      job?.contactPhone ||
+      job?.postedByPhone ||
+      job?.postedBy?.phone ||
+      job?.contact ||
+      null
+    );
+  };
+
+  const parseJobNumberFromQuestion = (q) => {
+    const raw = String(q || "");
+    const digits = raw.replace(/\D/g, "");
+    if (digits) {
+      const n = parseInt(digits, 10);
+      if (Number.isFinite(n) && n >= 1 && n <= 50) return n;
+    }
+    // Hindi/Marathi ordinals (basic)
+    if (/पहली|पहला|पहले/.test(raw)) return 1;
+    if (/दूसरी|दूसरा|दूसरे/.test(raw)) return 2;
+    if (/तीसरी|तीसरा|तीसरे/.test(raw)) return 3;
+    if (/पहिली|पहिला/.test(raw)) return 1;
+    if (/दुसरी|दुसरा/.test(raw)) return 2;
+    if (/तिसरी|तिसरा/.test(raw)) return 3;
+    return null;
+  };
+
+  const formatJobShort = (job, idx) => {
+    const title = job?.jobName || job?.title || job?.jobTitle || "";
+    const salary = job?.salary || "";
+    const location = job?.location || "";
+    return say(
+      `Job ${idx + 1}: ${title}${salary ? `, Salary: ${salary}` : ""}${location ? `, Location: ${location}` : ""}`,
+      `नौकरी ${idx + 1}: ${title}${salary ? `, सैलरी: ${salary}` : ""}${location ? `, लोकेशन: ${location}` : ""}`,
+      `नोकरी ${idx + 1}: ${title}${salary ? `, पगार: ${salary}` : ""}${location ? `, ठिकाण: ${location}` : ""}`
+    );
+  };
+
+  const formatJobDetails = (job, idx) => {
+    const title = job?.jobName || job?.title || job?.jobTitle || "";
+    const company = job?.company || job?.companyName || "";
+    const salary = job?.salary || "";
+    const location = job?.location || "";
+    const shift = job?.availability || job?.shift_time || "";
+    const exp = job?.experience || job?.experience_required || "";
+    const desc = job?.jobDescription || job?.description || "";
+
+    return say(
+      `Job ${idx + 1}: ${title}. Company: ${company || "Not specified"}. Salary: ${salary || "Not specified"}. Location: ${location || "Not specified"}. Shift: ${shift || "Not specified"}. Experience: ${exp || "Not specified"}. ${desc ? `Description: ${desc}` : ""}`,
+      `नौकरी ${idx + 1}: ${title}. कंपनी: ${company || "उल्लेख नहीं है"}. सैलरी: ${salary || "उल्लेख नहीं है"}. लोकेशन: ${location || "उल्लेख नहीं है"}. शिफ्ट: ${shift || "उल्लेख नहीं है"}. अनुभव: ${exp || "उल्लेख नहीं है"}. ${desc ? `विवरण: ${desc}` : ""}`,
+      `नोकरी ${idx + 1}: ${title}. कंपनी: ${company || "नमूद नाही"}. पगार: ${salary || "नमूद नाही"}. ठिकाण: ${location || "नमूद नाही"}. शिफ्ट: ${shift || "नमूद नाही"}. अनुभव: ${exp || "नमूद नाही"}. ${desc ? `वर्णन: ${desc}` : ""}`
+    );
+  };
+
+  const getAuthPrompt = (stage, profileName) => {
+    if (stage === "ask_phone") {
+      return say(
+        "Please tell your 10-digit mobile number.",
+        "कृपया अपना 10 अंकों का मोबाइल नंबर बताइए।",
+        "कृपया तुमचा 10 अंकी मोबाइल नंबर सांगा."
+      );
+    }
+    if (stage === "ask_pin") {
+      const base = profileName
+        ? say(
+            `Welcome back ${profileName}.`,
+            `${profileName}, आपका स्वागत है।`,
+            `${profileName}, स्वागत आहे.`
+          )
+        : "";
+      const ask = say(
+        "Please tell your 4-digit PIN.",
+        "कृपया अपना 4 अंकों का PIN बताइए।",
+        "कृपया तुमचा 4 अंकी PIN सांगा."
+      );
+      return `${base} ${ask}`.trim();
+    }
+    return "";
   };
 
   const authLogin = async ({ phone, pin }) => {
@@ -345,7 +564,31 @@ const AiAssistantPage = () => {
   const speak = (text, lang, onend) => {
     if (!window.speechSynthesis || !text || !isActiveRef.current) return;
 
-    const utterance = new SpeechSynthesisUtterance(text);
+    const makeSpeechFriendly = (value) => {
+      const langKey = lang === "hi" ? "hi" : lang === "mr" ? "mr" : "en";
+      let out = String(value || "");
+
+      // Salary ranges: "₹20,000 - ₹25,000" -> avoid reading '-' as 'minus'
+      const rangeRe = /₹\s*([\d,]+)\s*-\s*₹\s*([\d,]+)/g;
+      out = out.replace(rangeRe, (_m, a, b) => {
+        if (langKey === "hi") return `₹${a} से ₹${b} तक`;
+        if (langKey === "mr") return `₹${a} ते ₹${b} पर्यंत`;
+        return `₹${a} to ₹${b}`;
+      });
+
+      // Generic numeric ranges: "20000 - 25000"
+      const numRangeRe = /\b(\d[\d,]{2,})\s*-\s*(\d[\d,]{2,})\b/g;
+      out = out.replace(numRangeRe, (_m, a, b) => {
+        if (langKey === "hi") return `${a} से ${b} तक`;
+        if (langKey === "mr") return `${a} ते ${b} पर्यंत`;
+        return `${a} to ${b}`;
+      });
+
+      return out;
+    };
+
+    const speechText = makeSpeechFriendly(text);
+    const utterance = new SpeechSynthesisUtterance(speechText);
     const requested =
       lang === "en"
         ? "en-IN"
@@ -389,33 +632,113 @@ const AiAssistantPage = () => {
     window.speechSynthesis.speak(utterance);
   };
 
-  const getCurrentField = () => flowOrder[currentFieldIndexRef.current];
+  const getCurrentField = () => profileFlowOrder[currentFieldIndexRef.current];
 
   const goToNextField = () => {
     const nextIndex = Math.min(
       currentFieldIndexRef.current + 1,
-      flowOrder.length - 1,
+      profileFlowOrder.length - 1,
     );
     currentFieldIndexRef.current = nextIndex;
     setCurrentFieldIndex(nextIndex);
   };
 
-  useEffect(() => {
-    currentFieldIndexRef.current = 0;
-    setCurrentFieldIndex(0);
+  const hydrateAuthenticatedSession = async ({ speakIntro }) => {
+    const token = localStorage.getItem("token");
+    if (!token) return false;
 
-    const welcomeMessage = t("welcomeMessage", { userName });
-    const firstField = flowOrder[0];
-    const firstPrompt = getFieldPrompt(firstField, i18n.language);
+    let profile = null;
+    try {
+      const profileRes = await fetch(`${server_url}/api/auth/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const profileData = await profileRes.json();
+      profile = profileRes.ok ? profileData?.profile || null : null;
+    } catch (e) {
+      console.error("Profile fetch error:", e);
+    }
 
-    setMessages([{ sender: "ai", text: welcomeMessage, prompt: firstPrompt }]);
-    speak(`${welcomeMessage} ${firstPrompt}`, i18n.language);
+    if (profile) {
+      setFormData((prev) => ({ ...prev, ...profile, phone: profile.phone || prev.phone }));
+      if (profile.name) setUserName(profile.name);
+      try {
+        localStorage.setItem(
+          "workerProfile",
+          JSON.stringify({
+            profileId: profile._id || null,
+            name: profile.name,
+            age: profile.age,
+            address: profile.address,
+            phone: profile.phone,
+            shift_time: profile.shift_time,
+            experience: profile.experience,
+            job_title: profile.job_title,
+            salary_expectation: profile.salary_expectation,
+          })
+        );
+      } catch {}
+    }
 
-    if ("webkitSpeechRecognition" in window) {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
+    try {
+      const jobsRes = await fetch(`${server_url}/api/jobs/recommended`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const jobsData = await jobsRes.json();
+      const jobs = jobsRes.ok ? jobsData.jobs || [] : [];
+      setStoredJobs(jobs);
+      storedJobsRef.current = Array.isArray(jobs) ? jobs : [];
+      setConversationMode(true);
+      conversationModeRef.current = true;
+
+      if (speakIntro) {
+        const top3 = (jobs || []).slice(0, 3).map((j) => j.jobName || j.title).filter(Boolean);
+        const intro = profile?.name
+          ? say(`Hello ${profile.name}.`, `${profile.name}, नमस्ते।`, `${profile.name}, नमस्कार.`)
+          : say("Hello.", "नमस्ते।", "नमस्कार.");
+        const jobsMsg =
+          top3.length > 0
+            ? say(
+                `I found jobs for you: ${top3.join(", ")}. You can ask me anything about these jobs.`,
+                `आपके लिए नौकरियां मिली हैं: ${top3.join(", ")}. आप इन नौकरियों के बारे में कुछ भी पूछ सकते हैं।`,
+                `तुमच्यासाठी नोकऱ्या मिळाल्या आहेत: ${top3.join(", ")}. तुम्ही या नोकऱ्यांबद्दल काहीही विचारू शकता.`
+              )
+            : say(
+                "I could not find jobs right now, but you can still ask me questions.",
+                "अभी मुझे नौकरी नहीं मिली, लेकिन आप मुझसे सवाल पूछ सकते हैं।",
+                "सध्या नोकऱ्या मिळाल्या नाहीत, पण तुम्ही मला प्रश्न विचारू शकता."
+              );
+        const finalMsg = `${intro} ${jobsMsg}`.trim();
+        speak(finalMsg, i18n.language);
+        setMessages((prev) => [...prev, { sender: "ai", text: finalMsg, prompt: "" }]);
       }
 
+      return true;
+    } catch (e) {
+      console.error("Recommended jobs fetch error:", e);
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    if (hasInitializedRef.current) return;
+    hasInitializedRef.current = true;
+
+    // Restore assistant history (do NOT touch auth).
+    try {
+      const saved = sessionStorage.getItem(SESSION_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed?.messages) && parsed.messages.length > 0) {
+          setMessages(parsed.messages);
+        }
+        if (typeof parsed?.selectedJobIndex === "number") {
+          setSelectedJobIndex(parsed.selectedJobIndex);
+        }
+      }
+    } catch {}
+
+    // Initialize speech recognition once.
+    if ("webkitSpeechRecognition" in window) {
       const recognition = new window.webkitSpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
@@ -449,58 +772,155 @@ const AiAssistantPage = () => {
     } else {
       alert(t("speechRecognitionNotSupported"));
     }
-  }, [userName, i18n.language, t]);
 
-  useEffect(() => {
-    if (!localStorage.getItem("token")) return;
-    fetchAndSetProfileName();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // If user is already logged in, keep it and hydrate jobs without clearing session.
+    const token = localStorage.getItem("token");
+    const hasHistory = (() => {
+      try {
+        const saved = sessionStorage.getItem(SESSION_KEY);
+        const parsed = saved ? JSON.parse(saved) : null;
+        return Array.isArray(parsed?.messages) && parsed.messages.length > 0;
+      } catch {
+        return false;
+      }
+    })();
+
+    if (token) {
+      hydrateAuthenticatedSession({ speakIntro: !hasHistory });
+      return;
+    }
+
+    // Fresh start (no token): begin phone-first flow.
+    currentFieldIndexRef.current = 0;
+    setCurrentFieldIndex(0);
+    setConversationMode(false);
+    conversationModeRef.current = false;
+    setStoredJobs([]);
+    setSelectedJobIndex(null);
+    setFormData({
+      name: "",
+      age: "",
+      address: "",
+      phone: "",
+      shift_time: "",
+      experience: "",
+      job_title: "",
+      salary_expectation: "",
+    });
+    setAuthFlow({ stage: "ask_phone", phone: "", profileName: null, exists: null });
+
+    const welcomeMessage = say(
+      "Hello. I will help you find a job.",
+      "नमस्ते। मैं आपको नौकरी ढूंढने में मदद करूंगा।",
+      "नमस्कार. मी तुम्हाला नोकरी शोधण्यात मदत करेन."
+    );
+    const prompt = getAuthPrompt("ask_phone");
+    setMessages((prev) => (prev && prev.length > 0 ? prev : [{ sender: "ai", text: welcomeMessage, prompt }]));
+    speak(`${welcomeMessage} ${prompt}`.trim(), i18n.language);
   }, []);
 
-  const rankJobsForProfile = (profile, jobs) => {
-    const title = String(profile?.job_title || "").toLowerCase();
-    const addr = String(profile?.address || "").toLowerCase();
-    const skills = String(profile?.skills || "").toLowerCase();
-    const exp = Number(profile?.experience || 0);
-    const salary = Number(profile?.salary_expectation || 0);
+  useEffect(() => {
+    // When user switches language, keep session and just update recognition language.
+    if (recognitionRef.current) {
+      recognitionRef.current.lang =
+        i18n.language === "en"
+          ? "en-US"
+          : i18n.language === "hi"
+            ? "hi-IN"
+            : "mr-IN";
+    }
+  }, [i18n.language]);
 
-    const scoreJob = (job) => {
-      const jobTitle = String(job?.jobName || job?.title || "").toLowerCase();
-      const jobLoc = String(job?.location || "").toLowerCase();
-      const jobDesc = String(job?.jobDescription || job?.description || "").toLowerCase();
-      const jobSkills = Array.isArray(job?.skillsRequired)
-        ? job.skillsRequired.join(" ").toLowerCase()
-        : String(job?.skillsRequired || "").toLowerCase();
+  const fetchProfileAndJobsAfterLogin = async (phone) => {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Authentication token missing");
 
-      let s = 0;
-      if (title && (jobTitle.includes(title) || jobDesc.includes(title))) s += 8;
-      if (addr && (jobLoc.includes(addr) || addr.includes(jobLoc))) s += 3;
-      if (skills) {
-        const skillTokens = skills.split(/[\,\s]+/).filter(Boolean);
-        const hay = `${jobDesc} ${jobSkills}`;
-        for (const tok of skillTokens.slice(0, 6)) {
-          if (hay.includes(tok)) s += 1.5;
-        }
-      }
-      if (!Number.isNaN(exp)) {
-        const reqExp = Number(job?.experience || job?.experience_required || 0);
-        if (!Number.isNaN(reqExp)) {
-          if (exp >= reqExp) s += 1;
-          else s -= 1;
-        }
-      }
-      if (!Number.isNaN(salary)) {
-        const jobSalary = Number(String(job?.salary || "").replace(/\D/g, ""));
-        if (!Number.isNaN(jobSalary) && jobSalary > 0) {
-          if (salary <= jobSalary) s += 1;
-        }
-      }
-      return s;
-    };
+    let profile = null;
+    try {
+      const profileRes = await fetch(`${server_url}/api/auth/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const profileData = await profileRes.json();
+      profile = profileRes.ok ? profileData?.profile || null : null;
+    } catch (e) {
+      console.error("Profile fetch error:", e);
+    }
 
-    return (jobs || [])
-      .slice()
-      .sort((a, b) => scoreJob(b) - scoreJob(a));
+    if (profile) {
+      setFormData((prev) => ({
+        ...prev,
+        ...profile,
+        phone: profile.phone || phone || prev.phone,
+      }));
+      if (profile.name) setUserName(profile.name);
+
+      localStorage.setItem(
+        "workerProfile",
+        JSON.stringify({
+          profileId: profile._id || null,
+          name: profile.name,
+          age: profile.age,
+          address: profile.address,
+          phone: profile.phone,
+          shift_time: profile.shift_time,
+          experience: profile.experience,
+          job_title: profile.job_title,
+          salary_expectation: profile.salary_expectation,
+        })
+      );
+    }
+
+    const jobsRes = await fetch(`${server_url}/api/jobs/recommended`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const jobsData = await jobsRes.json();
+    const jobs = jobsRes.ok ? (jobsData.jobs || []) : [];
+
+    setStoredJobs(jobs);
+    setConversationMode(true);
+    conversationModeRef.current = true;
+
+    const top3 = (jobs || [])
+      .slice(0, 3)
+      .map((j) => j.jobName || j.title)
+      .filter(Boolean);
+
+    const intro = profile?.name
+      ? say(
+          `Hello ${profile.name}.`,
+          `${profile.name}, नमस्ते।`,
+          `${profile.name}, नमस्कार.`
+        )
+      : say("Hello.", "नमस्ते।", "नमस्कार.");
+
+    const profileMsg = profile
+      ? say(
+          "Your profile is found. You can ask me anything.",
+          "आपकी प्रोफाइल मिल गई है। अब आप जो पूछना है पूछिए।",
+          "तुमची प्रोफाईल मिळाली आहे. आता तुम्हाला जे विचारायचे आहे ते विचारा."
+        )
+      : say(
+          "I could not find your profile, but I will still try to show jobs.",
+          "आपकी प्रोफाइल नहीं मिली, लेकिन मैं फिर भी नौकरी दिखाने की कोशिश करूंगा।",
+          "तुमची प्रोफाईल मिळाली नाही, पण मी तरीही नोकऱ्या दाखवण्याचा प्रयत्न करेन."
+        );
+
+    const jobsMsg =
+      top3.length > 0
+        ? say(
+            `I found jobs for you: ${top3.join(", ")}. You can ask me anything about these jobs.`,
+            `आपके लिए नौकरियां मिली हैं: ${top3.join(", ")}. आप इन नौकरियों के बारे में कुछ भी पूछ सकते हैं।`,
+            `तुमच्यासाठी नोकऱ्या मिळाल्या आहेत: ${top3.join(", ")}. तुम्ही या नोकऱ्यांबद्दल काहीही विचारू शकता.`
+          )
+        : say(
+            "I could not find jobs right now, but you can still ask me questions.",
+            "अभी मुझे नौकरी नहीं मिली, लेकिन आप मुझसे सवाल पूछ सकते हैं।",
+            "सध्या नोकऱ्या मिळाल्या नाहीत, पण तुम्ही मला प्रश्न विचारू शकता."
+          );
+
+    const finalMsg = `${intro} ${profileMsg} ${jobsMsg}`.trim();
+    speak(finalMsg, i18n.language);
+    setMessages((prev) => [...prev, { sender: "ai", text: finalMsg, prompt: "" }]);
   };
 
   const handleTranscript = async (text) => {
@@ -509,177 +929,417 @@ const AiAssistantPage = () => {
 
     setMessages((prev) => [...prev, { sender: "user", text }]);
 
-    // Account save/login helper flow (voice-first)
-    if (accountAssist.step === "ask_phone") {
+    // Voice-first authentication flow
+    if (!conversationModeRef.current) {
+      const stage = authFlowRef.current.stage;
       const lang = i18n.language;
-      if (isSkipIntent(text)) {
-        const msg =
-          lang === "hi"
-            ? "ठीक है। आप अभी बिना PIN के भी सवाल पूछ सकते हैं।"
-            : lang === "mr"
-              ? "ठीक आहे. तुम्ही आता PIN शिवायही प्रश्न विचारू शकता."
-              : "Okay. You can continue without a PIN.";
-        speak(msg, lang);
-        setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
-        setAccountAssist({ step: "none", phone: "", pin: "", error: "" });
-        processingLockRef.current = false;
-        return;
-      }
 
-      const phone = normalizePhoneClient(text);
-      if (!phone) {
-        const retry =
-          lang === "hi"
-            ? "कृपया अपना 10 अंकों का मोबाइल नंबर धीरे-धीरे बोलिए। या 'skip' बोलिए।"
-            : lang === "mr"
-              ? "कृपया तुमचा 10 अंकी मोबाइल नंबर हळू बोला. किंवा 'skip' बोला."
-              : "Please say your 10-digit mobile number slowly, or say 'skip'.";
-        speak(retry, lang);
-        setMessages((prev) => [...prev, { sender: "ai", text: retry, prompt: "" }]);
-        processingLockRef.current = false;
-        return;
-      }
+      if (stage === "ask_phone") {
+        const phone = normalizePhoneClient(text);
+        if (!phone) {
+          const retry = say(
+            "Please say a valid 10-digit mobile number.",
+            "कृपया सही 10 अंकों का मोबाइल नंबर बोलिए।",
+            "कृपया योग्य 10 अंकी मोबाइल नंबर सांगा."
+          );
+          speak(retry, lang);
+          setMessages((prev) => [...prev, { sender: "ai", text: retry, prompt: "" }]);
+          processingLockRef.current = false;
+          return;
+        }
 
-      try {
-        setAccountAssist((p) => ({ ...p, step: "working", phone, error: "" }));
-        const res = await fetch(`${server_url}/api/auth/check-phone`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "Check failed");
+        setAuthFlow((p) => ({ ...p, stage: "loading", phone }));
+        setFormData((prev) => ({ ...prev, phone }));
 
-        if (data.exists) {
-          const msg =
-            lang === "hi"
-              ? "यह नंबर पहले से है। कृपया अपना 4 अंकों का PIN बोलिए।"
-              : lang === "mr"
-                ? "हा नंबर आधीपासून आहे. कृपया तुमचा 4 अंकी PIN बोला."
-                : "This number already exists. Please say your 4-digit PIN.";
-          speak(msg, lang);
-          setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
-          setAccountAssist({ step: "ask_pin", phone, pin: "", error: "" });
-        } else {
-          const generatedPin = String(Math.floor(1000 + Math.random() * 9000));
-          await authRegister({ phone, pin: generatedPin });
-          await authLogin({ phone, pin: generatedPin });
+        try {
+          const res = await fetch(`${server_url}/api/auth/check-phone`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || "Check failed");
 
-          // Persist profile to the authenticated account
-          const token = localStorage.getItem("token");
-          if (token) {
-            await axios.post(
-              `${server_url}/api/auth/create-profile`,
-              { ...formDataRef.current, phone },
-              { headers: { Authorization: `Bearer ${token}` } },
+          if (data.exists) {
+            setAuthFlow({ stage: "ask_pin", phone, profileName: data.profileName || null, exists: true });
+            const msg = getAuthPrompt("ask_pin", data.profileName || null);
+            speak(msg, lang);
+            setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+          } else {
+            setAuthFlow({ stage: "collect_profile", phone, profileName: null, exists: false });
+            currentFieldIndexRef.current = 0;
+            setCurrentFieldIndex(0);
+
+            const msg = say(
+              "New number. I will ask a few questions to create your profile.",
+              "यह नया नंबर है। मैं आपकी प्रोफाइल बनाने के लिए कुछ सवाल पूछूंगा।",
+              "हा नवीन नंबर आहे. तुमची प्रोफाईल तयार करण्यासाठी मी काही प्रश्न विचारतो."
             );
+            const firstField = getCurrentField();
+            const prompt = getFieldPrompt(firstField, lang);
+            speak(`${msg} ${prompt}`.trim(), lang);
+            setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt }]);
+          }
+        } catch (e) {
+          const msg = say(
+            `Sorry, I could not check your number. ${e.message}`,
+            `माफ़ कीजिए, मैं नंबर चेक नहीं कर पाया। ${e.message}`,
+            `माफ करा, नंबर तपासता आला नाही. ${e.message}`
+          );
+          setAuthFlow({ stage: "ask_phone", phone: "", profileName: null, exists: null });
+          speak(msg, lang);
+          setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: getAuthPrompt("ask_phone") }]);
+        } finally {
+          processingLockRef.current = false;
+        }
+        return;
+      }
+
+      if (stage === "ask_pin") {
+        const pin = parsePinFromSpeech(text);
+        if (!pin) {
+          const retry = say(
+            "Please say your 4-digit PIN again.",
+            "कृपया अपना 4 अंकों का PIN फिर से बोलिए।",
+            "कृपया तुमचा 4 अंकी PIN पुन्हा सांगा."
+          );
+          speak(retry, lang);
+          setMessages((prev) => [...prev, { sender: "ai", text: retry, prompt: "" }]);
+          processingLockRef.current = false;
+          return;
+        }
+
+        setAuthFlow((p) => ({ ...p, stage: "loading" }));
+        try {
+          await authLogin({ phone: authFlowRef.current.phone, pin });
+
+          // If profile is missing, fall back to collecting it
+          const token = localStorage.getItem("token");
+          let profile = null;
+          if (token) {
+            const profileRes = await fetch(`${server_url}/api/auth/profile`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const profileData = await profileRes.json();
+            profile = profileRes.ok ? profileData?.profile || null : null;
           }
 
-          setFormData((prev) => ({ ...prev, phone }));
+          if (!profile) {
+            setAuthFlow((p) => ({ ...p, stage: "collect_profile" }));
+            currentFieldIndexRef.current = 0;
+            setCurrentFieldIndex(0);
+            setFormData((prev) => ({ ...prev, phone: authFlowRef.current.phone }));
 
-          const msg =
-            lang === "hi"
-              ? `हो गया। आपका PIN है ${generatedPin}. अगली बार आप इसी मोबाइल और PIN से आवाज़ से लॉगिन कर सकते हैं।`
-              : lang === "mr"
-                ? `झाले. तुमचा PIN आहे ${generatedPin}. पुढच्या वेळी हाच मोबाइल आणि PIN वापरून लॉगिन करू शकता.`
-                : `Done. Your PIN is ${generatedPin}. Next time you can login using this mobile and PIN.`;
+            const msg = say(
+              "I could not find your profile. I will ask a few questions.",
+              "आपकी प्रोफाइल नहीं मिली। मैं कुछ सवाल पूछूंगा।",
+              "तुमची प्रोफाईल सापडली नाही. मी काही प्रश्न विचारतो."
+            );
+            const prompt = getFieldPrompt(getCurrentField(), lang);
+            speak(`${msg} ${prompt}`.trim(), lang);
+            setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt }]);
+            processingLockRef.current = false;
+            return;
+          }
+
+          setAuthFlow((p) => ({ ...p, stage: "loading" }));
+          await fetchProfileAndJobsAfterLogin(authFlowRef.current.phone);
+        } catch (e) {
+          const msg = say(
+            "Wrong PIN. Please try again.",
+            "PIN गलत है। कृपया फिर से बोलिए।",
+            "PIN चुकीचा आहे. कृपया पुन्हा सांगा."
+          );
+          setAuthFlow((p) => ({ ...p, stage: "ask_pin" }));
           speak(msg, lang);
           setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
-          setAccountAssist({ step: "none", phone: "", pin: "", error: "" });
+        } finally {
+          processingLockRef.current = false;
         }
-      } catch (e) {
-        const lang = i18n.language;
-        const msg =
-          lang === "hi"
-            ? `माफ़ कीजिए, सेव नहीं हो पाया। ${e.message}`
-            : lang === "mr"
-              ? `माफ करा, सेव करता आले नाही. ${e.message}`
-              : `Sorry, I couldn't save your profile. ${e.message}`;
-        speak(msg, lang);
-        setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
-        setAccountAssist({ step: "none", phone: "", pin: "", error: "" });
-      } finally {
-        processingLockRef.current = false;
-      }
-      return;
-    }
-
-    if (accountAssist.step === "ask_pin") {
-      const lang = i18n.language;
-      const pin = parsePinFromSpeech(text);
-      if (!pin) {
-        const retry =
-          lang === "hi"
-            ? "कृपया अपना 4 अंकों का PIN फिर से बोलिए।"
-            : lang === "mr"
-              ? "कृपया तुमचा 4 अंकी PIN पुन्हा बोला."
-              : "Please say your 4-digit PIN again.";
-        speak(retry, lang);
-        setMessages((prev) => [...prev, { sender: "ai", text: retry, prompt: "" }]);
-        processingLockRef.current = false;
         return;
       }
-
-      try {
-        await authLogin({ phone: accountAssist.phone, pin });
-
-        const token = localStorage.getItem("token");
-        if (token) {
-          await axios.post(
-            `${server_url}/api/auth/create-profile`,
-            { ...formDataRef.current, phone: accountAssist.phone },
-            { headers: { Authorization: `Bearer ${token}` } },
-          );
-        }
-
-        setFormData((prev) => ({ ...prev, phone: accountAssist.phone }));
-
-        const msg =
-          lang === "hi"
-            ? "लॉगिन हो गया। अब आपका प्रोफाइल सेव हो गया है।"
-            : lang === "mr"
-              ? "लॉगिन झाले. आता तुमचा प्रोफाइल सेव झाला आहे."
-              : "Logged in. Your profile is now saved.";
-        speak(msg, lang);
-        setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
-        setAccountAssist({ step: "none", phone: "", pin: "", error: "" });
-      } catch (e) {
-        const msg =
-          lang === "hi"
-            ? "PIN गलत है। कृपया फिर से बोलिए।"
-            : lang === "mr"
-              ? "PIN चुकीचा आहे. कृपया पुन्हा बोला."
-              : "Incorrect PIN. Please try again.";
-        speak(msg, lang);
-        setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
-      } finally {
-        processingLockRef.current = false;
-      }
-      return;
     }
 
     // Check if in conversation mode
     if (conversationModeRef.current) {
-      if (shouldStartSaveFlow(text)) {
-        const lang = i18n.language;
-        const msg =
-          lang === "hi"
-            ? "ठीक है। अपना 10 अंकों का मोबाइल नंबर बोलिए। या 'skip' बोलिए।"
-            : lang === "mr"
-              ? "ठीक आहे. तुमचा 10 अंकी मोबाइल नंबर बोला. किंवा 'skip' बोला."
-              : "Okay. Please say your 10-digit mobile number, or say 'skip'.";
-        speak(msg, lang);
-        setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
-        setAccountAssist({ step: "ask_phone", phone: "", pin: "", error: "" });
-        processingLockRef.current = false;
-        return;
-      }
-
       try {
+        const jobsNow = storedJobsRef.current;
+
+        if (isLocationJobsRequest(text)) {
+          const city = extractCityFromQuestion(text);
+          if (!city) {
+            const msg = say(
+              "Please tell the city name (for example: Pune).",
+              "कृपया शहर का नाम बोलिए (जैसे: पुणे)।",
+              "कृपया शहराचे नाव सांगा (उदा.: पुणे)."
+            );
+            speak(msg, i18n.language);
+            setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+            processingLockRef.current = false;
+            return;
+          }
+
+          const category = extractCategoryFromQuestion(text);
+          let jobsForCity = [];
+          try {
+            jobsForCity = await searchJobsFromServer({ location: city, category, limit: 10 });
+          } catch {
+            jobsForCity = (jobsNow || []).filter((j) =>
+              normalizeText(j?.location).includes(normalizeText(city))
+            );
+          }
+
+          if (Array.isArray(jobsForCity) && jobsForCity.length > 0) {
+            setStoredJobs(jobsForCity);
+            storedJobsRef.current = jobsForCity;
+            setSelectedJobIndex(null);
+          }
+
+          const msg =
+            jobsForCity.length > 0
+              ? [
+                  say(
+                    category ? `Jobs in ${city} for ${category}:` : `Jobs in ${city}:`,
+                    `${city === "pune" ? "पुणे" : city} में ये नौकरियां हैं:`,
+                    `${city === "pune" ? "पुणे" : city} मध्ये या नोकऱ्या आहेत:`
+                  ),
+                  ...jobsForCity.slice(0, 5).map((j, idx) => formatJobShort(j, idx)),
+                  say(
+                    "Say the job number to hear full details.",
+                    "पूरी डिटेल के लिए नौकरी नंबर बोलिए।",
+                    "सविस्तर माहितीसाठी नोकरी क्रमांक सांगा."
+                  ),
+                ].join(" ")
+              : say(
+                  `I did not find jobs for ${city} right now.`,
+                  `${city === "pune" ? "पुणे" : city} के लिए अभी मेरे पास सेव की हुई नौकरी नहीं है।`,
+                  `${city === "pune" ? "पुणे" : city} साठी सध्या माझ्याकडे सेव केलेल्या नोकऱ्या नाहीत.`
+                );
+
+          speak(msg, i18n.language);
+          setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+          processingLockRef.current = false;
+          return;
+        }
+
+        // Local (deterministic) handling for common commands
+        if (isShowJobsRequest(text)) {
+          const category = extractCategoryFromQuestion(text);
+          if (category && /job|jobs|नौकरी|नोकरी|जॉब/i.test(text)) {
+            try {
+              const jobsByCategory = await searchJobsFromServer({ category, limit: 10 });
+              if (jobsByCategory.length > 0) {
+                setStoredJobs(jobsByCategory);
+                storedJobsRef.current = jobsByCategory;
+                setSelectedJobIndex(null);
+
+                const msg =
+                  jobsByCategory.length > 0
+                    ? [
+                        say(
+                          `Here are ${category} jobs:`,
+                          `${category} की नौकरियां:`,
+                          `${category} च्या नोकऱ्या:`
+                        ),
+                        ...jobsByCategory.slice(0, 5).map((j, idx) => formatJobShort(j, idx)),
+                        say(
+                          "Say the job number to hear full details.",
+                          "पूरी डिटेल के लिए नौकरी नंबर बोलिए।",
+                          "सविस्तर माहितीसाठी नोकरी क्रमांक सांगा."
+                        ),
+                      ].join(" ")
+                    : say(
+                        "I don't have jobs saved right now.",
+                        "अभी मेरे पास सेव की हुई नौकरियां नहीं हैं।",
+                        "सध्या माझ्याकडे सेव केलेल्या नोकऱ्या नाहीत."
+                      );
+
+                speak(msg, i18n.language);
+                setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+                processingLockRef.current = false;
+                return;
+              }
+            } catch {
+              // ignore and fall back to local list
+            }
+          }
+
+          const top = (jobsNow || []).slice(0, 5);
+          const msg =
+            top.length > 0
+              ? [
+                  say(
+                    "Here are your recommended jobs:",
+                    "यह आपकी रिकमेंड की हुई नौकरियां हैं:",
+                    "या तुमच्यासाठी रिकमेंड केलेल्या नोकऱ्या आहेत:"
+                  ),
+                  ...top.map((j, idx) => formatJobShort(j, idx)),
+                  say(
+                    "Say the job number to hear full details.",
+                    "पूरी डिटेल के लिए नौकरी नंबर बोलिए।",
+                    "सविस्तर माहितीसाठी नोकरी क्रमांक सांगा."
+                  ),
+                ].join(" ")
+              : say(
+                  "I don't have jobs saved right now.",
+                  "अभी मेरे पास सेव की हुई नौकरियां नहीं हैं।",
+                  "सध्या माझ्याकडे सेव केलेल्या नोकऱ्या नाहीत."
+                );
+
+          speak(msg, i18n.language);
+          setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+          processingLockRef.current = false;
+          return;
+        }
+
+        if (isJobDetailsRequest(text)) {
+          const num = parseJobNumberFromQuestion(text);
+          if (num && jobsNow?.[num - 1]) {
+            const msg = formatJobDetails(jobsNow[num - 1], num - 1);
+            speak(msg, i18n.language);
+            setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+            processingLockRef.current = false;
+            return;
+          }
+
+          // Try matching by title keywords
+          const qNorm = normalizeText(text);
+          const matches = (jobsNow || [])
+            .map((job, idx) => ({ job, idx, title: normalizeText(job?.jobName || job?.title || job?.jobTitle) }))
+            .filter((x) => x.title && (qNorm.includes(x.title) || x.title.includes(qNorm)))
+            .slice(0, 3);
+
+          if (matches.length === 1) {
+            const msg = formatJobDetails(matches[0].job, matches[0].idx);
+            speak(msg, i18n.language);
+            setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+            processingLockRef.current = false;
+            return;
+          }
+
+          if (matches.length > 1) {
+            const msg = [
+              say(
+                "I found multiple matching jobs. Please say the job number:",
+                "मुझे कई मिलती-जुलती नौकरियां मिलीं। कृपया नौकरी नंबर बोलिए:",
+                "मला अनेक जुळणाऱ्या नोकऱ्या मिळाल्या. कृपया नोकरी क्रमांक सांगा:"
+              ),
+              ...matches.map((m) => formatJobShort(m.job, m.idx)),
+            ].join(" ");
+            speak(msg, i18n.language);
+            setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+            processingLockRef.current = false;
+            return;
+          }
+        }
+
+        // "Any one <type> job info" requests (avoid LLM hallucination)
+        if (isAnyOneJobInfoRequest(text)) {
+          const keyword = detectJobKeyword(text);
+          let match = null;
+
+          if (keyword) {
+            const k = keyword;
+            match = (jobsNow || [])
+              .map((job, idx) => ({ job, idx }))
+              .find(({ job }) => {
+                const title = normalizeText(job?.jobName || job?.title || job?.jobTitle);
+                const category = normalizeText(job?.category);
+                return title.includes(normalizeText(k)) || category.includes(normalizeText(k));
+              });
+          }
+
+          if (!match && (jobsNow || []).length > 0) {
+            match = { job: jobsNow[0], idx: 0 };
+          }
+
+          const msg = match
+            ? formatJobDetails(match.job, match.idx)
+            : say(
+                "I don't have jobs saved right now.",
+                "अभी मेरे पास सेव की हुई नौकरियां नहीं हैं।",
+                "सध्या माझ्याकडे सेव केलेल्या नोकऱ्या नाहीत."
+              );
+
+          speak(msg, i18n.language);
+          setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+          processingLockRef.current = false;
+          return;
+        }
+
+        if (isContactRequest(text)) {
+          const callIntent = /\bcall\b|call\s+lagao|कॉल\s*लगा|कॉल\s*कर|फोन\s*लगा|call\s*karo|dial/i.test(text);
+          const num = parseJobNumberFromQuestion(text);
+          let job = null;
+          let idx = null;
+
+          if (num && jobsNow?.[num - 1]) {
+            job = jobsNow[num - 1];
+            idx = num - 1;
+          } else {
+            const keyword = detectJobKeyword(text);
+            if (keyword) {
+              const hit = (jobsNow || [])
+                .map((j, i) => ({ j, i }))
+                .find(({ j }) => {
+                  const title = normalizeText(j?.jobName || j?.title || j?.jobTitle);
+                  const category = normalizeText(j?.category);
+                  return title.includes(normalizeText(keyword)) || category.includes(normalizeText(keyword));
+                });
+              if (hit) {
+                job = hit.j;
+                idx = hit.i;
+              }
+            }
+          }
+
+          if (!job) {
+            const msg = say(
+              "Please tell the job number to get contact details.",
+              "कॉन्टैक्ट डिटेल के लिए कृपया नौकरी नंबर बोलिए।",
+              "काँटॅक्ट माहितीसाठी कृपया नोकरी क्रमांक सांगा."
+            );
+            speak(msg, i18n.language);
+            setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+            processingLockRef.current = false;
+            return;
+          }
+
+          const phone = getJobContactPhone(job);
+          const title = job?.jobName || job?.title || job?.jobTitle || "";
+
+          if (typeof idx === "number") {
+            setSelectedJobIndex(idx);
+          }
+
+          const msg = phone
+            ? say(
+                callIntent
+                  ? `I selected Job ${idx + 1} (${title}). Tap the call button to call ${phone}.`
+                  : `Job ${idx + 1} (${title}) contact number is ${phone}.`,
+                callIntent
+                  ? `मैंने नौकरी ${idx + 1} (${title}) चुन ली है। कॉल करने के लिए कॉल बटन दबाएं: ${phone}.`
+                  : `नौकरी ${idx + 1} (${title}) का कॉन्टैक्ट नंबर है: ${phone}.`,
+                callIntent
+                  ? `मी नोकरी ${idx + 1} (${title}) निवडली आहे. कॉल करण्यासाठी कॉल बटन दाबा: ${phone}.`
+                  : `नोकरी ${idx + 1} (${title}) साठी संपर्क क्रमांक आहे: ${phone}.`
+              )
+            : say(
+                `Job ${idx + 1} (${title}) contact number is not available. You can apply from the app.`,
+                `नौकरी ${idx + 1} (${title}) का कॉन्टैक्ट नंबर उपलब्ध नहीं है। आप ऐप से अप्लाई कर सकते हैं।`,
+                `नोकरी ${idx + 1} (${title}) साठी संपर्क क्रमांक उपलब्ध नाही. तुम्ही ॲपमधून अर्ज करू शकता.`
+              );
+
+          speak(msg, i18n.language);
+          setMessages((prev) => [...prev, { sender: "ai", text: msg, prompt: "" }]);
+          processingLockRef.current = false;
+          return;
+        }
+
         // Call backend to answer based on stored jobs
         const res = await axios.post(`${server_url}/api/voice/answer-job-question`, {
           question: text,
-          jobs: storedJobs,
+          jobs: jobsNow,
           language: i18n.language,
           profile: formDataRef.current,
         });
@@ -735,7 +1395,7 @@ const AiAssistantPage = () => {
 
         setRetryCounts((prev) => ({ ...prev, [field]: 0 }));
 
-        if (currentFieldIndexRef.current + 1 < flowOrder.length) {
+        if (currentFieldIndexRef.current + 1 < profileFlowOrder.length) {
           // Move to next field
           goToNextField();
           const nextField = getCurrentField();
@@ -748,104 +1408,40 @@ const AiAssistantPage = () => {
             ]);
           }
         } else {
-          // All fields filled - submit profile
+          // All fields filled - create account (if needed), create profile, then fetch jobs
           try {
             const finalData = {
               ...formDataRef.current,
               [field]: value,
             };
 
-            console.log("Submitting finalData:", finalData);
+            const phone = authFlowRef.current.phone || finalData.phone;
+            if (!phone) throw new Error("Phone number missing");
+
+            // If this was a NEW user flow, ALWAYS create account now and auto-login
+            if (authFlowRef.current.exists === false) {
+              clearAssistantSession();
+              const generatedPin = String(Math.floor(1000 + Math.random() * 9000));
+              await authRegister({ phone, pin: generatedPin });
+              await authLogin({ phone, pin: generatedPin });
+
+              const pinMsg = say(
+                `Your PIN is ${generatedPin}. Please save it for next time.`,
+                `आपका PIN है ${generatedPin}. कृपया इसे अगली बार के लिए याद रखें।`,
+                `तुमचा PIN आहे ${generatedPin}. पुढच्या वेळेसाठी लक्षात ठेवा.`
+              );
+              speak(pinMsg, lang);
+              setMessages((prev) => [...prev, { sender: "ai", text: pinMsg, prompt: "" }]);
+            }
 
             const token = localStorage.getItem("token");
+            if (!token) throw new Error("Login failed");
 
-            let createdProfile = null;
-            let recommendedJobs = [];
-            let profileId = null;
+            await axios.post(`${server_url}/api/auth/create-profile`, { ...finalData, phone }, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
 
-            if (token) {
-              const profileRes = await axios.post(
-                `${server_url}/api/auth/create-profile`,
-                finalData,
-                {
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                  },
-                },
-              );
-
-              ({ profileId, user: createdProfile, recommendedJobs } = profileRes.data);
-            } else {
-              // Guest flow: store locally and fetch public jobs
-              const jobsRes = await axios
-                .get(`${server_url}/api/jobs/public`)
-                .catch(() => axios.get(`${server_url}/api/jobs`));
-              const jobs = jobsRes?.data?.jobs || [];
-              recommendedJobs = rankJobsForProfile(finalData, jobs).slice(0, 5);
-            }
-
-            const profileToStore = createdProfile || finalData;
-
-            localStorage.setItem(
-              "workerProfile",
-              JSON.stringify({
-                profileId: profileId || null,
-                name: profileToStore.name,
-                age: profileToStore.age,
-                address: profileToStore.address,
-                phone: profileToStore.phone,
-                shift_time: profileToStore.shift_time,
-                experience: profileToStore.experience,
-                skills: profileToStore.skills,
-                job_title: profileToStore.job_title,
-                salary_expectation: profileToStore.salary_expectation,
-              }),
-            );
-
-            // Store jobs and enter conversation mode
-            setStoredJobs(recommendedJobs || []);
-            setConversationMode(true);
-            conversationModeRef.current = true;
-
-            let jobRecommendationSpeech = "";
-
-            if (recommendedJobs && recommendedJobs.length > 0) {
-              const jobCount = recommendedJobs.length;
-              const jobTitles = recommendedJobs
-                .slice(0, 3)
-                .map((job) => job.jobName || job.title)
-                .filter(Boolean)
-                .join(", ");
-
-              jobRecommendationSpeech =
-                lang === "hi"
-                  ? `बधाई हो! आपकी प्रोफाइल तैयार है। मैंने ${jobCount} नौकरियां पाईं: ${jobTitles}। अब आप इन नौकरियों के बारे में कोई भी सवाल पूछ सकते हैं।`
-                  : lang === "mr"
-                    ? `अभिनंदन! तुमची प्रोफाईल तयार आहे। मला ${jobCount} नोकऱ्या मिळाल्या: ${jobTitles}. आता तुम्ही या नोकऱ्यांबद्दल कोणताही प्रश्न विचारू शकता.`
-                    : `Great! Your profile is ready. I found ${jobCount} jobs: ${jobTitles}. You can now ask me any questions about these jobs.`;
-            } else {
-              jobRecommendationSpeech =
-                lang === "hi"
-                  ? "आपकी प्रोफाइल तैयार है, लेकिन अभी कोई नौकरी नहीं मिली। आप मुझसे नौकरी ढूंढने के बारे में पूछ सकते हैं।"
-                  : lang === "mr"
-                    ? "तुमची प्रोफाईल तयार आहे, पण सध्या कोणतीही नोकरी मिळाली नाही. तुम्ही मला नोकरी शोधण्याबद्दल विचारू शकता."
-                    : "Your profile is ready, but no jobs found yet. You can ask me about finding jobs.";
-            }
-
-            const saveHint =
-              token
-                ? ""
-                : lang === "hi"
-                  ? "अगर आप चाहें तो अगली बार के लिए PIN बनवा सकते हैं। बोलिए: 'save my profile'."
-                  : lang === "mr"
-                    ? "तुम्हाला पुढच्या वेळेसाठी PIN हवा असेल तर बोला: 'save my profile'."
-                    : "If you want a PIN for next time, say: 'save my profile'.";
-
-            speak(`${jobRecommendationSpeech} ${saveHint}`.trim(), lang);
-            setMessages((prev) => [
-              ...prev,
-              { sender: "ai", text: `${jobRecommendationSpeech} ${saveHint}`.trim(), prompt: "" },
-            ]);
+            await fetchProfileAndJobsAfterLogin(phone);
           } catch (e) {
             console.error("Profile submission error:", e);
             if (e.response) {
@@ -869,7 +1465,7 @@ const AiAssistantPage = () => {
               [field]: text.trim(),
             }));
 
-            if (currentFieldIndexRef.current + 1 < flowOrder.length) {
+            if (currentFieldIndexRef.current + 1 < profileFlowOrder.length) {
               goToNextField();
               const nextField = getCurrentField();
               const promptText = getFieldPrompt(nextField, lang);
@@ -908,7 +1504,7 @@ const AiAssistantPage = () => {
             [field]: text.trim(),
           }));
 
-          if (currentFieldIndexRef.current + 1 < flowOrder.length) {
+          if (currentFieldIndexRef.current + 1 < profileFlowOrder.length) {
             goToNextField();
             const nextField = getCurrentField();
             const promptText = getFieldPrompt(nextField, lang);
@@ -1085,14 +1681,6 @@ const AiAssistantPage = () => {
                   <span className="summary-value">{formData.experience}</span>
                 </div>
               )}
-              {formData.skills && (
-                <div className="summary-row">
-                  <span className="summary-label">
-                    {t("assistantPage.labels.skills", { defaultValue: "Skills" })}:
-                  </span>
-                  <span className="summary-value">{formData.skills}</span>
-                </div>
-              )}
               {formData.job_title && (
                 <div className="summary-row">
                   <span className="summary-label">
@@ -1129,6 +1717,82 @@ const AiAssistantPage = () => {
               ))}
             </div>
           </div>
+
+          {conversationMode && storedJobs?.length > 0 && (
+            <div className="side-section">
+              <h3 className="side-title">
+                {t("ui.recommendedJobsTitle", { defaultValue: "Recommended Jobs" })}
+              </h3>
+              <div className="job-cards">
+                {storedJobs.slice(0, 10).map((job, idx) => {
+                  const title = job?.jobName || job?.title || job?.jobTitle;
+                  const company = job?.company || job?.companyName;
+                  const salary = job?.salary;
+                  const location = job?.location;
+                  const shift = job?.availability || job?.shift_time;
+                  const exp = job?.experience || job?.experience_required;
+                  const minAge = job?.minAge;
+                  const skills = Array.isArray(job?.skillsRequired) ? job.skillsRequired : [];
+                  const desc = job?.jobDescription || job?.description;
+                  const contactPhone = getJobContactPhone(job);
+
+                  const isSelected = selectedJobIndex === idx;
+
+                  return (
+                    <div
+                      className={`job-card${isSelected ? " selected" : ""}`}
+                      key={job?._id || idx}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedJobIndex(idx)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") setSelectedJobIndex(idx);
+                      }}
+                    >
+                      <div className="job-card-header">
+                        <div className="job-card-title">
+                          {idx + 1}. {title || ""}
+                        </div>
+                        {company && <div className="job-card-sub">{company}</div>}
+                      </div>
+
+                      <div className="job-card-meta">
+                        {salary && <span className="job-chip">{salary}</span>}
+                        {location && <span className="job-chip">{location}</span>}
+                        {shift && <span className="job-chip">{shift}</span>}
+                        {exp && <span className="job-chip">Exp: {exp}</span>}
+                        {minAge && <span className="job-chip">Min age: {minAge}</span>}
+                      </div>
+
+                      {skills.length > 0 && (
+                        <div className="job-card-row">
+                          <div className="job-card-label">Skills:</div>
+                          <div className="job-card-value">{skills.join(", ")}</div>
+                        </div>
+                      )}
+
+                      <div className="job-card-row">
+                        <div className="job-card-label">Contact:</div>
+                        <div className="job-card-value">
+                          {contactPhone || "Not available"}
+                        </div>
+                      </div>
+
+                      {contactPhone ? (
+                        <div className="job-card-actions">
+                          <a className="job-call-btn" href={`tel:${String(contactPhone).replace(/\s+/g, "")}`}>
+                            Call
+                          </a>
+                        </div>
+                      ) : null}
+
+                      {desc && <div className="job-card-desc">{desc}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

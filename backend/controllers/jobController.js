@@ -19,6 +19,115 @@ const parseObjectIdList = (value) => {
     .map((s) => new mongoose.Types.ObjectId(s));
 };
 
+const attachJobContacts = async (jobs) => {
+  const list = Array.isArray(jobs) ? jobs : [];
+  if (list.length === 0) return [];
+
+  const postedByIds = Array.from(
+    new Set(
+      list
+        .map((j) => {
+          const postedBy = j?.postedBy;
+          if (!postedBy) return null;
+          // Handle ObjectId and string
+          const s = typeof postedBy === 'string' ? postedBy : postedBy.toString?.();
+          return s && /^[a-fA-F0-9]{24}$/.test(s) ? s : null;
+        })
+        .filter(Boolean)
+    )
+  );
+
+  if (postedByIds.length === 0) {
+    return list.map((j) => (typeof j?.toObject === 'function' ? j.toObject() : { ...j, contactPhone: null }));
+  }
+
+  const authUsers = await AuthUser.find({ _id: { $in: postedByIds } }).select('phone');
+  const phoneMap = new Map(authUsers.map((u) => [u._id.toString(), u.phone || null]));
+
+  return list.map((j) => {
+    const obj = typeof j?.toObject === 'function' ? j.toObject() : { ...j };
+    const postedBy = obj.postedBy;
+    const postedByStr = typeof postedBy === 'string' ? postedBy : postedBy?.toString?.();
+    const contactPhone = obj.contactPhone || (postedByStr ? phoneMap.get(postedByStr) || null : null);
+    return { ...obj, contactPhone };
+  });
+};
+
+const escapeRegex = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const parseMinSalaryFromString = (salaryRaw) => {
+  const s = String(salaryRaw || '').replace(/,/g, ' ');
+  if (!s) return null;
+  const kMatch = s.match(/(\d+(?:\.\d+)?)\s*k\b/i);
+  if (kMatch) {
+    const n = Number(kMatch[1]);
+    return Number.isFinite(n) ? Math.round(n * 1000) : null;
+  }
+  const nums = s.match(/\d{3,6}/g);
+  if (!nums || nums.length === 0) return null;
+  const values = nums.map((x) => Number(x)).filter((n) => Number.isFinite(n));
+  if (values.length === 0) return null;
+  return Math.min(...values);
+};
+
+// GET /api/jobs/search?location=&category=&availability=&q=&minSalary=&limit=
+exports.searchJobs = async (req, res) => {
+  try {
+    const {
+      location = '',
+      category = '',
+      availability = '',
+      q = '',
+      minSalary = '',
+      limit = '20',
+    } = req.query || {};
+
+    const pageLimit = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+    const and = [activeStatusQuery];
+
+    if (location) {
+      and.push({ location: { $regex: escapeRegex(location), $options: 'i' } });
+    }
+    if (category) {
+      and.push({ category: String(category).trim() });
+    }
+    if (availability) {
+      and.push({ availability: String(availability).trim() });
+    }
+
+    if (q) {
+      const re = new RegExp(escapeRegex(q), 'i');
+      and.push({
+        $or: [
+          { jobName: re },
+          { company: re },
+          { jobDescription: re },
+          { location: re },
+          { category: re },
+        ],
+      });
+    }
+
+    const mongoQuery = and.length > 1 ? { $and: and } : activeStatusQuery;
+
+    let jobs = await Job.find(mongoQuery).sort({ createdAt: -1 }).limit(pageLimit);
+
+    const minSalaryNum = minSalary !== '' ? Number(minSalary) : null;
+    if (Number.isFinite(minSalaryNum) && minSalaryNum !== null) {
+      jobs = jobs.filter((job) => {
+        const parsed = parseMinSalaryFromString(job?.salary);
+        return parsed !== null && parsed >= minSalaryNum;
+      });
+    }
+
+    jobs = await attachJobContacts(jobs);
+    return res.status(200).json({ success: true, count: jobs.length, jobs });
+  } catch (error) {
+    console.error('[ERROR searchJobs]', error);
+    return res.status(500).json({ success: false, message: 'Failed to search jobs', error: error.message });
+  }
+};
+
 // Helper: Calculate distance between two coordinates (Haversine formula)
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; // Earth's radius in km
@@ -241,6 +350,8 @@ exports.getPublicJobs = async (req, res) => {
     
     jobs = [...jobs, ...randomJobs];
     jobs = jobs.sort(() => Math.random() - 0.5);
+
+    jobs = await attachJobContacts(jobs);
     
     console.log('[DEBUG getPublicJobs] Returning', jobs.length, 'jobs');
     
@@ -402,12 +513,16 @@ exports.getRecommendedJobs = async (req, res) => {
     const pagedOtherJobs = otherJobs.filter((job) => pageIds.has(job._id.toString()));
     const hasMore = remainingCombined.length > pageCombined.length;
     
+    const pageCombinedWithContacts = await attachJobContacts(pageCombined);
+    const pagedRecommendedJobsWithContacts = await attachJobContacts(pagedRecommendedJobs);
+    const pagedOtherJobsWithContacts = await attachJobContacts(pagedOtherJobs);
+
     return res.status(200).json({
       success: true,
       count: pageCombined.length,
-      recommendedJobs: pagedRecommendedJobs,  // Exact category matches
-      otherJobs: pagedOtherJobs,              // Related/similar jobs
-      jobs: pageCombined,                     // Page combined (for backward compatibility)
+      recommendedJobs: pagedRecommendedJobsWithContacts,  // Exact category matches
+      otherJobs: pagedOtherJobsWithContacts,              // Related/similar jobs
+      jobs: pageCombinedWithContacts,                     // Page combined (for backward compatibility)
       mode: 'recommended',
       cached: !needsRecompute,
       lastUpdated: worker.recommendationsLastUpdated,

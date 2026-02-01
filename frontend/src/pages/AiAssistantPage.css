@@ -65,6 +65,124 @@
   padding: 16px;
 }
 
+.job-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: auto;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.job-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.job-card.selected {
+  border-color: rgba(47, 87, 255, 0.55);
+  box-shadow: 0 10px 26px rgba(47, 87, 255, 0.14);
+}
+
+.job-card-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.job-call-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #2f57ff;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.job-call-btn:hover {
+  background: #2446d6;
+}
+
+.job-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.job-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  word-break: break-word;
+  line-height: 1.2;
+}
+
+.job-card-sub {
+  font-size: 12px;
+  color: #374151;
+  word-break: break-word;
+}
+
+.job-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.job-chip {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.10);
+  color: #1e3a8a;
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-card-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  align-items: flex-start;
+}
+
+.job-card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #111827;
+  min-width: 60px;
+  flex: 0 0 auto;
+}
+
+.job-card-value {
+  font-size: 12px;
+  color: #374151;
+  flex: 1;
+  word-break: break-word;
+}
+
+.job-card-desc {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #4b5563;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+
 .side-title {
   font-size: 1rem;
   font-weight: 600;

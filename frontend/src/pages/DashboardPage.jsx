@@ -27,6 +27,7 @@ const DashboardPage = () => {
     jobDescription: '',
     location: '',
     salary: '',
+    contactPhone: '',
     category: 'other',
     minAge: 18,
     availability: 'full-time',
@@ -424,6 +425,12 @@ const DashboardPage = () => {
                   <input name="company" placeholder="Company" value={postJobForm.company} onChange={handlePostJobChange} />
                   <input name="location" placeholder="Location" value={postJobForm.location} onChange={handlePostJobChange} />
                   <input name="salary" placeholder="Salary" value={postJobForm.salary} onChange={handlePostJobChange} />
+                  <input
+                    name="contactPhone"
+                    placeholder="Contact Phone (optional)"
+                    value={postJobForm.contactPhone}
+                    onChange={handlePostJobChange}
+                  />
                   <input name="experience" placeholder="Experience (e.g. 1 year)" value={postJobForm.experience} onChange={handlePostJobChange} />
                   <textarea name="jobDescription" placeholder="Job Description" value={postJobForm.jobDescription} onChange={handlePostJobChange} />
                   <input name="skillsRequired" placeholder="Skills (comma separated)" value={postJobForm.skillsRequired} onChange={handlePostJobChange} />

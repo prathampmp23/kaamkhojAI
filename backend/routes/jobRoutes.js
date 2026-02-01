@@ -14,6 +14,7 @@ router.get('/public', jobController.getPublicJobs);
 console.log("protect:", protect);
 router.get('/recommended', protect, jobController.getRecommendedJobs);
 router.get('/nearby', protect, jobController.getNearbyJobs);
+router.get('/search', protect, jobController.searchJobs);
 router.post('/toggle-mode', protect, jobController.toggleJobViewMode);
 router.post('/invalidate-recommendations', protect, jobController.invalidateRecommendations);
 
@@ -56,6 +57,7 @@ router.post("/", protect, requireRole('giver'), async (req, res) => {
       jobDescription,
       location,
       salary,
+      contactPhone,
       category,
       minAge,
       availability,
@@ -87,6 +89,7 @@ router.post("/", protect, requireRole('giver'), async (req, res) => {
       jobDescription,
       location,
       salary,
+      contactPhone: contactPhone ? String(contactPhone).trim() : null,
       category,
       minAge,
       availability,
