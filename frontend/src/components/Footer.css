@@ -1,0 +1,108 @@
+.kaamkhoj-footer {
+  background-color: #ffffff;
+  padding: 60px 0 40px;
+  border-top: 1px solid #f1f5f9;
+  font-family: "Inter", sans-serif;
+}
+
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 40px;
+}
+
+/* Brand Side */
+.footer-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin-bottom: 16px;
+  color: #0f172a;
+}
+
+.footer-logo .accent {
+  color: #2563eb;
+}
+
+.footer-copy {
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* Founders Side */
+.footer-founders-side {
+  text-align: right;
+}
+
+.founders-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+
+.founders-list {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  width: 200px;
+}
+
+.founders-list span {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #2563eb; /* Matches your primary brand color */
+  transition: color 0.2s;
+}
+
+.founders-list span:hover {
+  color: #1e40af;
+}
+
+.made-with {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.heart-icon {
+  color: #ef4444;
+  fill: #ef4444;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .footer-container {
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+  }
+
+  .footer-founders-side {
+    text-align: center;
+  }
+
+  .founders-list {
+    justify-content: center;
+    gap: 8px 16px;
+  }
+
+  .made-with {
+    justify-content: center;
+  }
+}

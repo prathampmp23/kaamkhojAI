@@ -1,46 +1,69 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Mic, Send, Sparkles } from "lucide-react";
 import "./AiAssistant.css";
 
 const AiAssistant = ({ preview = false }) => {
   const { t } = useTranslation();
 
   return (
-    <section className="ai-assistant-preview">
+    <section className="ai-modern-section">
+      <div className="glow-orb"></div>
       <div className="container">
-        <div className="ai-preview-content">
-          <div className="ai-preview-text">
-            <h2>{t("aiPreview.title")}</h2>
+        <div className="modern-layout">
+          <div className="content-side">
+            <span className="badges">
+              <Sparkles size={14} fill="black"/>
+              {"  "}
+              {"AI Powered"}
+            </span>
+            <h1>{t("aiPreview.title")}</h1>
             <p>{t("aiPreview.description")}</p>
-            <Link to="/assistant">
-              <button className="ai-start-btn">
-                <i className="fas fa-microphone me-2"></i>
+            <Link to="/assistant" className="btn-wrapper">
+              <button className="modern-btn">
                 {t("aiPreview.button")}
+                <div className="btn-icon">
+                  <Mic size={18} />
+                </div>
               </button>
             </Link>
           </div>
-          <div className="ai-preview-image">
-            <div className="ai-chat-interface">
-              <div className="ai-chat-header">
-                <div className="ai-avatar">{t("aiPreview.avatarLabel")}</div>
-                <div className="ai-name">
-                  {t("aiPreview.assistantName")}
+
+          <div className="visual-side">
+            <div className="glass-chat">
+              <div className="chat-header">
+                <div className="avatar-stack">
+                  <div className="avatar-main">AI</div>
+                  <div className="status-dot"></div>
+                </div>
+                <div className="header-info">
+                  <span className="name">{t("aiPreview.assistantName")}</span>
+                  <span className="status">{"Always active"}</span>
                 </div>
               </div>
-              <div className="ai-chat-messages">
-                <div className="ai-message">{t("aiPreview.greeting")}</div>
-                <div className="ai-message">{t("aiPreview.askName")}</div>
-                <div className="user-message">{t("aiPreview.userNameExample")}</div>
-                <div className="ai-message">{t("aiPreview.askMobile")}</div>
-              </div>
-              <div className="ai-chat-input">
-                <div className="mic-button">
-                  <i className="fas fa-microphone"></i>
+
+              <div className="chat-body">
+                <div className="bubble ai-bubble">
+                  {t("aiPreview.greeting")}
                 </div>
-                <span className="input-placeholder">
-                  {t("aiPreview.micPlaceholder")}
-                </span>
+                <div className="bubble user-bubble">
+                  {t("aiPreview.userNameExample")}
+                </div>
+                <div className="bubble ai-bubble typing">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+
+              <div className="chat-footer">
+                <div className="input-pill">
+                  <span>{t("aiPreview.micPlaceholder")}</span>
+                  <button className="send-btn">
+                    <Send size={16} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

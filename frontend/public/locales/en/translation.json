@@ -90,7 +90,8 @@
     },
     "ui": {
         "conversationTitle": "Conversation",
-        "capturedDetailsTitle": "Captured Details"
+        "capturedDetailsTitle": "Captured Details",
+        "recommendedJobsTitle": "Recommended Jobs"
     },
     "footer": {
         "rights": "All Rights Reserved",
@@ -107,6 +108,20 @@
             "experience": "Experience",
             "jobType": "Job Type",
             "salary": "Salary"
+        },
+        "recommendations": {
+            "title": "Recommended Jobs",
+            "company": "Company",
+            "location": "Location",
+            "salary": "Salary",
+            "shift": "Shift",
+            "experience": "Experience",
+            "minAge": "Minimum Age",
+            "skills": "Skills",
+            "contact": "Contact",
+            "description": "Description",
+            "callButton": "Call",
+            "notAvailable": "Not available"
         }
     },
     "noJobsFoundMessage": "No exact matches found. I'll show you all jobs.",

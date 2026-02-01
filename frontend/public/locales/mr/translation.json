@@ -90,7 +90,8 @@
     },
     "ui": {
         "conversationTitle": "संवाद",
-        "capturedDetailsTitle": "जतन केलेले तपशील"
+        "capturedDetailsTitle": "जतन केलेले तपशील",
+        "recommendedJobsTitle": "शिफारस केलेल्या नोकर्‍या"
     },
     "footer": {
         "rights": "सर्व हक्क राखीव",
@@ -107,6 +108,20 @@
             "experience": "अनुभव",
             "jobType": "नोकरीचा प्रकार",
             "salary": "पगार"
+        },
+        "recommendations": {
+            "title": "शिफारस केलेल्या नोकर्‍या",
+            "company": "कंपनी",
+            "location": "ठिकाण",
+            "salary": "पगार",
+            "shift": "शिफ्ट",
+            "experience": "अनुभव",
+            "minAge": "किमान वय",
+            "skills": "कौशल्य",
+            "contact": "संपर्क",
+            "description": "वर्णन",
+            "callButton": "कॉल करा",
+            "notAvailable": "उपलब्ध नाही"
         }
     },
     "noJobsFoundMessage": "जुळणाऱ्या नोकऱ्या सापडल्या नाहीत. मी तुम्हाला सर्व नोकऱ्या दाखवतो.",

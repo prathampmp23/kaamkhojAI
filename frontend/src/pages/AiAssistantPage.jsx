@@ -7,6 +7,7 @@ import NavigationBar from "../components/NavigationBar";
 import axios from "axios";
 import server from "../environment";
 import { useAuthContext } from "../context/AuthContext";
+import { translateJobs } from "../utils/translateJobs";
 
 const profileFlowOrder = [
   "name",
@@ -111,12 +112,27 @@ const AiAssistantPage = () => {
   const { setCurrentUser, setIsAuthenticated } = useAuthContext();
 
   const { t, i18n } = useTranslation();
+  
+  // Track current language to force re-renders
+  const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
 
   const changeLanguage = (lang) => {
     try {
+      // Cancel any ongoing speech
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      
       i18n.changeLanguage(lang);
       localStorage.setItem("preferredLanguage", lang);
-    } catch {}
+      
+      // Reload page to apply all translations including jobs data
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+    } catch (e) {
+      console.error("Language change error:", e);
+    }
   };
 
   const [isListening, setIsListening] = useState(false);
@@ -137,9 +153,11 @@ const AiAssistantPage = () => {
   // Conversation mode state
   const [conversationMode, setConversationMode] = useState(false);
   const [storedJobs, setStoredJobs] = useState([]);
+  const rawJobsRef = useRef([]); // Store original untranslated jobs
   const conversationModeRef = useRef(false);
   const storedJobsRef = useRef([]);
   const [selectedJobIndex, setSelectedJobIndex] = useState(null);
+  const [isTranslating, setIsTranslating] = useState(false);
 
   const hasInitializedRef = useRef(false);
   const SESSION_KEY = "kaamkhoj_ai_assistant_session_v1";
@@ -589,14 +607,21 @@ const AiAssistantPage = () => {
 
     const speechText = makeSpeechFriendly(text);
     const utterance = new SpeechSynthesisUtterance(speechText);
+    
+    // Normalize language input - use i18n.language if lang is passed as normalized form
+    let normalizedLang = lang;
+    if (lang === "en-US" || lang === "en-IN" || lang === "en") normalizedLang = "en";
+    if (lang === "hi-IN" || lang === "hi") normalizedLang = "hi";
+    if (lang === "mr-IN" || lang === "mr") normalizedLang = "mr";
+    
     const requested =
-      lang === "en"
+      normalizedLang === "en"
         ? "en-IN"
-        : lang === "hi"
+        : normalizedLang === "hi"
           ? "hi-IN"
-          : lang === "mr"
+          : normalizedLang === "mr"
             ? "mr-IN"
-            : lang;
+            : "en-IN";
 
     const voices = window.speechSynthesis.getVoices();
     const lower = (s) => (s || "").toLowerCase();
@@ -604,12 +629,13 @@ const AiAssistantPage = () => {
     const base = lower(requested).split("-")[0];
     const findBase = voices.find((v) => lower(v.lang).startsWith(base));
     const findHindi = voices.find((v) => lower(v.lang).startsWith("hi"));
+    const findMarathi = voices.find((v) => lower(v.lang).startsWith("mr"));
     const findEnIn = voices.find((v) => lower(v.lang).startsWith("en-in"));
     const findEn = voices.find((v) => lower(v.lang).startsWith("en"));
 
     let chosen = findExact || findBase;
     if (!chosen && base === "mr") {
-      chosen = findHindi || findEnIn || findEn;
+      chosen = findMarathi || findHindi || findEnIn || findEn;
     }
     if (!chosen) {
       chosen = findEnIn || findEn || null;
@@ -619,8 +645,12 @@ const AiAssistantPage = () => {
       utterance.voice = chosen;
       utterance.lang = chosen.lang || requested;
     } else {
-      utterance.lang = requested === "mr-IN" ? "hi-IN" : requested;
+      utterance.lang = requested;
     }
+    
+    // Set rate and pitch for better speech
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
 
     const wrappedOnEnd = () => {
       if (!isActiveRef.current) return;
@@ -685,13 +715,17 @@ const AiAssistantPage = () => {
       });
       const jobsData = await jobsRes.json();
       const jobs = jobsRes.ok ? jobsData.jobs || [] : [];
-      setStoredJobs(jobs);
-      storedJobsRef.current = Array.isArray(jobs) ? jobs : [];
+      
+      // Store raw jobs and translate them
+      rawJobsRef.current = jobs;
+      const translatedJobs = await translateJobs(server_url, jobs, i18n.language);
+      setStoredJobs(translatedJobs);
+      storedJobsRef.current = Array.isArray(translatedJobs) ? translatedJobs : [];
       setConversationMode(true);
       conversationModeRef.current = true;
 
       if (speakIntro) {
-        const top3 = (jobs || []).slice(0, 3).map((j) => j.jobName || j.title).filter(Boolean);
+        const top3 = (translatedJobs || []).slice(0, 3).map((j) => j.jobName || j.title).filter(Boolean);
         const intro = profile?.name
           ? say(`Hello ${profile.name}.`, `${profile.name}, नमस्ते।`, `${profile.name}, नमस्कार.`)
           : say("Hello.", "नमस्ते।", "नमस्कार.");
@@ -809,14 +843,17 @@ const AiAssistantPage = () => {
     });
     setAuthFlow({ stage: "ask_phone", phone: "", profileName: null, exists: null });
 
+    // Use the current language from i18n (respects user's preference)
+    const currentLang = i18n.language;
     const welcomeMessage = say(
       "Hello. I will help you find a job.",
       "नमस्ते। मैं आपको नौकरी ढूंढने में मदद करूंगा।",
       "नमस्कार. मी तुम्हाला नोकरी शोधण्यात मदत करेन."
     );
     const prompt = getAuthPrompt("ask_phone");
+    const fullMessage = `${welcomeMessage} ${prompt}`.trim();
     setMessages((prev) => (prev && prev.length > 0 ? prev : [{ sender: "ai", text: welcomeMessage, prompt }]));
-    speak(`${welcomeMessage} ${prompt}`.trim(), i18n.language);
+    speak(fullMessage, currentLang);
   }, []);
 
   useEffect(() => {
@@ -829,7 +866,28 @@ const AiAssistantPage = () => {
             ? "hi-IN"
             : "mr-IN";
     }
-  }, [i18n.language]);
+    // Update language state to trigger re-renders
+    setCurrentLanguage(i18n.language);
+    
+    // Translate jobs when language changes
+    const rawJobs = rawJobsRef.current;
+    if (rawJobs && rawJobs.length > 0) {
+      setIsTranslating(true);
+      translateJobs(server_url, rawJobs, i18n.language)
+        .then(translated => {
+          setStoredJobs(translated);
+          storedJobsRef.current = translated;
+          setIsTranslating(false);
+        })
+        .catch(err => {
+          console.error("Translation error:", err);
+          // Fallback to raw jobs if translation fails
+          setStoredJobs(rawJobs);
+          storedJobsRef.current = rawJobs;
+          setIsTranslating(false);
+        });
+    }
+  }, [i18n.language, server_url]);
 
   const fetchProfileAndJobsAfterLogin = async (phone) => {
     const token = localStorage.getItem("token");
@@ -876,11 +934,14 @@ const AiAssistantPage = () => {
     const jobsData = await jobsRes.json();
     const jobs = jobsRes.ok ? (jobsData.jobs || []) : [];
 
-    setStoredJobs(jobs);
+    // Store raw jobs and translate them
+    rawJobsRef.current = jobs;
+    const translatedJobs = await translateJobs(server_url, jobs, i18n.language);
+    setStoredJobs(translatedJobs);
     setConversationMode(true);
     conversationModeRef.current = true;
 
-    const top3 = (jobs || [])
+    const top3 = (translatedJobs || [])
       .slice(0, 3)
       .map((j) => j.jobName || j.title)
       .filter(Boolean);
@@ -1081,15 +1142,20 @@ const AiAssistantPage = () => {
 
           const category = extractCategoryFromQuestion(text);
           let jobsForCity = [];
+          let rawJobsForCity = [];
           try {
-            jobsForCity = await searchJobsFromServer({ location: city, category, limit: 10 });
+            rawJobsForCity = await searchJobsFromServer({ location: city, category, limit: 10 });
+            // Translate the fetched jobs
+            jobsForCity = await translateJobs(server_url, rawJobsForCity, i18n.language);
           } catch {
-            jobsForCity = (jobsNow || []).filter((j) =>
+            rawJobsForCity = (jobsNow || []).filter((j) =>
               normalizeText(j?.location).includes(normalizeText(city))
             );
+            jobsForCity = rawJobsForCity;
           }
 
           if (Array.isArray(jobsForCity) && jobsForCity.length > 0) {
+            rawJobsRef.current = rawJobsForCity; // Store raw for future translations
             setStoredJobs(jobsForCity);
             storedJobsRef.current = jobsForCity;
             setSelectedJobIndex(null);
@@ -1129,8 +1195,11 @@ const AiAssistantPage = () => {
             try {
               const jobsByCategory = await searchJobsFromServer({ category, limit: 10 });
               if (jobsByCategory.length > 0) {
-                setStoredJobs(jobsByCategory);
-                storedJobsRef.current = jobsByCategory;
+                // Translate the fetched jobs
+                const translatedJobs = await translateJobs(server_url, jobsByCategory, i18n.language);
+                rawJobsRef.current = jobsByCategory; // Store raw for future translations
+                setStoredJobs(translatedJobs);
+                storedJobsRef.current = translatedJobs;
                 setSelectedJobIndex(null);
 
                 const msg =
@@ -1721,7 +1790,7 @@ const AiAssistantPage = () => {
           {conversationMode && storedJobs?.length > 0 && (
             <div className="side-section">
               <h3 className="side-title">
-                {t("ui.recommendedJobsTitle", { defaultValue: "Recommended Jobs" })}
+                {t("assistantPage.recommendations.title", { defaultValue: "Recommended Jobs" })}
               </h3>
               <div className="job-cards">
                 {storedJobs.slice(0, 10).map((job, idx) => {
@@ -1760,28 +1829,28 @@ const AiAssistantPage = () => {
                         {salary && <span className="job-chip">{salary}</span>}
                         {location && <span className="job-chip">{location}</span>}
                         {shift && <span className="job-chip">{shift}</span>}
-                        {exp && <span className="job-chip">Exp: {exp}</span>}
-                        {minAge && <span className="job-chip">Min age: {minAge}</span>}
+                        {exp && <span className="job-chip">{t("assistantPage.recommendations.experience", { defaultValue: "Exp" })}: {exp}</span>}
+                        {minAge && <span className="job-chip">{t("assistantPage.recommendations.minAge", { defaultValue: "Min age" })}: {minAge}</span>}
                       </div>
 
                       {skills.length > 0 && (
                         <div className="job-card-row">
-                          <div className="job-card-label">Skills:</div>
+                          <div className="job-card-label">{t("assistantPage.recommendations.skills", { defaultValue: "Skills" })}:</div>
                           <div className="job-card-value">{skills.join(", ")}</div>
                         </div>
                       )}
 
                       <div className="job-card-row">
-                        <div className="job-card-label">Contact:</div>
+                        <div className="job-card-label">{t("assistantPage.recommendations.contact", { defaultValue: "Contact" })}:</div>
                         <div className="job-card-value">
-                          {contactPhone || "Not available"}
+                          {contactPhone || t("assistantPage.recommendations.notAvailable", { defaultValue: "Not available" })}
                         </div>
                       </div>
 
                       {contactPhone ? (
                         <div className="job-card-actions">
                           <a className="job-call-btn" href={`tel:${String(contactPhone).replace(/\s+/g, "")}`}>
-                            Call
+                            {t("assistantPage.recommendations.callButton", { defaultValue: "Call" })}
                           </a>
                         </div>
                       ) : null}

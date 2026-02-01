@@ -90,7 +90,8 @@
     },
     "ui": {
         "conversationTitle": "वार्तालाप",
-        "capturedDetailsTitle": "सहेजे गए विवरण"
+        "capturedDetailsTitle": "सहेजे गए विवरण",
+        "recommendedJobsTitle": "अनुशंसित नौकरियां"
     },
     "footer": {
         "rights": "सर्वाधिकार सुरक्षित",
@@ -119,6 +120,20 @@
             "experience": "अनुभव",
             "jobType": "नौकरी का प्रकार",
             "salary": "वेतन"
+        },
+        "recommendations": {
+            "title": "अनुशंसित नौकरियां",
+            "company": "कंपनी",
+            "location": "स्थान",
+            "salary": "वेतन",
+            "shift": "शिफ्ट",
+            "experience": "अनुभव",
+            "minAge": "न्यूनतम उम्र",
+            "skills": "कौशल",
+            "contact": "संपर्क",
+            "description": "विवरण",
+            "callButton": "कॉल करें",
+            "notAvailable": "उपलब्ध नहीं"
         }
     },
     "noJobsFoundMessage": "सटीक मेल नहीं मिला। मैं आपको सभी नौकरियां दिखाऊंगा।",

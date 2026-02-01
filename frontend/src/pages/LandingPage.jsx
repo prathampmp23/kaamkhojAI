@@ -1,118 +1,150 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import {
+  Mic,
+  Search,
+  Phone,
+  Globe,
+  Volume2,
+  MapPin,
+  ShieldCheck,
+  Zap,
+  ArrowRight,
+  Play,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
-import NavigationBar from "../components/NavigationBar";
-import HeroSection from "../components/HeroSection";
-import JobListings from "../components/JobListings";
-import AiAssistant from "../components/AiAssistant";
-import Footer from "../components/Footer";
 import "./LandingPage.css";
+
+// Internal Components
+import NavigationBar from "../components/NavigationBar";
+import Footer from "../components/Footer";
+import AiAsstance from "../components/AiAssistant";
+import { Link } from "react-router-dom";
 
 const LandingPage = () => {
   const { t } = useTranslation();
-  const features = t("features.list", { returnObjects: true });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 500);
-
+    const timer = setTimeout(() => setIsLoading(false), 1200);
     return () => clearTimeout(timer);
   }, []);
 
-  return (
-    <div className="landing-page">
-      {isLoading ? (
-        <div className="loader-container">
-          <div className="loader"></div>
-          <h2 className="brand-name">KaamKhoojAI</h2>
-          <p className="brand-tagline">A New Path to Employment</p>
+  if (isLoading) {
+    return (
+      <div className="loader-screen">
+        <div className="loader-content">
+          <div className="logo-icon animate-pulse">
+            <Zap size={38} fill="#2563eb" color="#2563eb" />
+          </div>
+          <div className="">
+            <h1 className="shimmer-text">{t("KaamKhojAI")}</h1>
+          </div>
         </div>
-      ) : (
-        <>
-          <NavigationBar />
+      </div>
+    );
+  }
 
-          <main>
-            <HeroSection />
+  return (
+    <div className="modern-wrapper">
+      <NavigationBar />
+      <main>
+        {/* Hero Section */}
+        <section className="hero">
+          <div className="hero-orb"></div>
+          <div className="hero-content">
+            <div className="ai-tag">
+              ✨ {t("hero.tagline", "100% Vernacular AI Matching")}
+            </div>
+            <h1 className="hereo-head-heading">
+              Sahi Kaam, <br />
+              <span className="text-gradient">Sahi Waqt Par.</span>
+            </h1>
+            <p className="hero-subtitle">
+              {t(
+                "hero.subtitle",
+                "The first job platform built for Bharat. Just talk to our AI in your native language and get matched to jobs within 5km instantly.",
+              )}
+            </p>
+            <div className="hero-actions">
+              <Link to="/assistant" className="link">
+                <button className="cta-primary">
+                  {t("getStarted", "Get Started")} <ArrowRight size={20} />
+                </button>
+              </Link>
+              <button className="cta-secondary">
+                <Play size={18} fill="currentColor" />{" "}
+                {t("watchDemo", "Watch Demo")}
+              </button>
+            </div>
+          </div>
+        </section>
 
-            <section className="features-section">
-              <div className="container">
-                <h2 className="section-title">{t("features.title")}</h2>
-                <div className="features-grid">
-                  {Array.isArray(features) ? (
-                    features.map((feature, index) => (
-                      <div className="feature" key={index}>
-                        <div className="feature-icon">
-                          <i
-                            className={`fas fa-${
-                              [
-                                "language",
-                                "volume-up",
-                                "map-marker-alt",
-                                "user-shield",
-                              ][index]
-                            }`}
-                          ></i>
-                        </div>
+        {/* Bento Grid Features */}
+        <section className="bento-container" id="features">
+          <h2 className="section-label">{t("capabilities", "Capabilities")}</h2>
+          <h3 className="section-title">
+            {t("bento.title", "Built for the Next Billion")}
+          </h3>
 
-                        <h3>{feature.title}</h3>
-                        <p>{feature.description}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p>Loading features...</p>
-                  )}
-                </div>
+          <div className="bento-grid">
+            {/* Feature Cards use t() for full localization */}
+            <div className="bento-card large dark-card">
+              <div className="card-icon">
+                <Globe size={40} />
               </div>
-            </section>
-
-            <section className="quick-actions">
-              <h2 className="quick-action-title">{t("quickActions.title")}</h2>
-              <div className="container">
-                <div className="action-card ">
-                  <div className="action-icon">
-                    <i className="fas fa-microphone"></i>
-                  </div>
-                  <h3>{t("quickActions.voiceForm.title")}</h3>
-                  <p>{t("quickActions.voiceForm.description")}</p>
-                  <Link to="/assistant" className="action-btn">
-                    {t("quickActions.voiceForm.button")}
-                  </Link>
-                </div>
-
-                <div className="action-card highlight">
-                  <div className="action-icon">
-                    <i className="fas fa-search-location"></i>
-                  </div>
-                  <h3>{t("quickActions.findJob.title")}</h3>
-                  <p>{t("quickActions.findJob.description")}</p>
-                  <Link to="/jobs" className="action-btn">
-                    {t("quickActions.findJob.button")}
-                  </Link>
-                </div>
-
-                <div className="action-card">
-                  <div className="action-icon">
-                    <i className="fas fa-phone-alt"></i>
-                  </div>
-                  <h3>{t("quickActions.contact.title")}</h3>
-                  <p>{t("quickActions.contact.description")}</p>
-                  <Link to="/" className="action-btn">
-                    {t("quickActions.contact.button")}
-                  </Link>
-                </div>
+              <h3>{t("features.vernacular.title", "Vernacular AI Search")}</h3>
+              <p>
+                {t(
+                  "features.vernacular.desc",
+                  "Speak or type in English, Hindi, or Marathi. Our AI understands every dialect.",
+                )}
+              </p>
+              <div className="card-visual">
+                <div className="lang-tag float-1">हिन्दी</div>
+                <div className="lang-tag float-2">मराठी</div>
+                <div className="lang-tag float-3">English</div>
+                <div className="visual-glow"></div>
               </div>
-            </section>
+            </div>
 
-            <AiAssistant />
+            <div className="bento-card medium glass-card">
+              <div className="card-icon">
+                <Mic size={35} />
+              </div>
+              <h3>{t("features.voice.title", "Voice Profiles")}</h3>
+              <p>
+                {t(
+                  "features.voice.desc",
+                  "No resume needed. Just tell us your experience.",
+                )}
+              </p>
+            </div>
 
-            <JobListings title={t("jobListings")} showCount={4} />
-          </main>
+            <div className="bento-card small green-card">
+              <div className="card-icon">
+                <ShieldCheck size={35} />
+              </div>
+              <h3>{t("features.verified.title", "100% Verified")}</h3>
+              <p>
+                {t(
+                  "features.verified.desc",
+                  "Aadhaar verified employers only.",
+                )}
+              </p>
+            </div>
 
-          <Footer />
-        </>
-      )}
+            <div className="bento-card small accent-card ">
+              <div className="card-icon">
+                <MapPin size={35} />
+              </div>
+              <h3>{t("features.local.title", "Hyper-Local")}</h3>
+              <p>{t("features.local.desc", "Work within 5km of home.")}</p>
+            </div>
+          </div>
+        </section>
+      </main>
+      <AiAsstance />
+      <Footer />
     </div>
   );
 };

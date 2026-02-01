@@ -14,7 +14,7 @@
 .ai-assistant-container {
   border-radius: 20px;
   text-align: center;
-  max-width: 520px;
+  max-width: 600px;
   padding: 20px;
   box-shadow: 0 6px 24px rgba(17, 24, 39, 0.08);
   background: #fff;
@@ -318,7 +318,7 @@ video {
   background-color: rgb(255, 255, 255);
   border-radius: 50px;
   padding: 5px;
-  margin: 0 11rem;
+  margin: 0px 12rem;
   box-shadow: inset 1px 1px 5px rgba(0, 0, 0, 0.5);
 }
 
