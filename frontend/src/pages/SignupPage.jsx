@@ -14,12 +14,12 @@ export default function SignupPage() {
     password: "",
     confirmPassword: "",
     role: "seeker",
-    agreeTerms: false
+    agreeTerms: false,
   });
   const [errors, setErrors] = useState({});
   const [language, setLanguage] = useState(i18n.language || "en");
   const { isLoading, error, register, setError } = useAuth();
-  
+
   // Load saved language preference
   useEffect(() => {
     const savedLanguage = localStorage.getItem("preferredLanguage");
@@ -33,7 +33,7 @@ export default function SignupPage() {
   useEffect(() => {
     setLanguage(i18n.language || "en");
   }, [i18n.language]);
-  
+
   // Translation content
   const content = {
     hi: {
@@ -63,7 +63,7 @@ export default function SignupPage() {
       pinRequired: "PIN आवश्यक है",
       pinLength: "PIN कम से कम 4 अंकों का होना चाहिए",
       pinsDoNotMatch: "PIN मेल नहीं खाते",
-      mustAgreeTerms: "आपको नियम और शर्तों से सहमत होना चाहिए"
+      mustAgreeTerms: "आपको नियम और शर्तों से सहमत होना चाहिए",
     },
     mr: {
       createAccount: "खाते तयार करा",
@@ -92,7 +92,7 @@ export default function SignupPage() {
       pinRequired: "PIN आवश्यक आहे",
       pinLength: "PIN किमान 4 अंकांचा असावा",
       pinsDoNotMatch: "PIN जुळत नाहीत",
-      mustAgreeTerms: "आपण अटी व शर्ती मान्य करणे आवश्यक आहे"
+      mustAgreeTerms: "आपण अटी व शर्ती मान्य करणे आवश्यक आहे",
     },
     en: {
       createAccount: "Create Account",
@@ -121,14 +121,16 @@ export default function SignupPage() {
       pinRequired: "PIN is required",
       pinLength: "PIN must be at least 4 digits",
       pinsDoNotMatch: "PINs do not match",
-      mustAgreeTerms: "You must agree to the terms and conditions"
-    }
+      mustAgreeTerms: "You must agree to the terms and conditions",
+    },
   };
-  
+
   // Handle language change
   const handleLanguageChange = (lang) => {
     setLanguage(lang);
-    try { localStorage.setItem("preferredLanguage", lang); } catch {}
+    try {
+      localStorage.setItem("preferredLanguage", lang);
+    } catch {}
     i18n.changeLanguage(lang);
   };
 
@@ -145,7 +147,7 @@ export default function SignupPage() {
       ...formData,
       [name]: type === "checkbox" ? checked : value,
     });
-    
+
     // Clear errors when user types
     if (errors[name]) {
       setErrors({
@@ -153,7 +155,7 @@ export default function SignupPage() {
         [name]: "",
       });
     }
-    
+
     // Clear general error when typing
     if (errors.general) {
       setErrors({
@@ -174,36 +176,39 @@ export default function SignupPage() {
     } else if (normalized.length !== 10) {
       newErrors.phone = content[language].phoneInvalid;
     }
-    
+
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = content[language].invalidEmail;
     }
-    
+
     if (!formData.password) {
       newErrors.password = content[language].pinRequired;
     } else if (formData.password.length < 4) {
       newErrors.password = content[language].pinLength;
     }
 
-    if (formData.confirmPassword && formData.password !== formData.confirmPassword) {
+    if (
+      formData.confirmPassword &&
+      formData.password !== formData.confirmPassword
+    ) {
       newErrors.confirmPassword = content[language].pinsDoNotMatch;
     }
-    
+
     if (!formData.agreeTerms) {
       newErrors.agreeTerms = content[language].mustAgreeTerms;
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     // Use the register function from our custom hook
     register({
       phone: formData.phone,
@@ -215,7 +220,10 @@ export default function SignupPage() {
 
   return (
     <>
-      <NavigationBar language={language} onLanguageChange={handleLanguageChange} />
+      <NavigationBar
+        language={language}
+        onLanguageChange={handleLanguageChange}
+      />
       <div className="signup-container">
         <div className="signup-overlay"></div>
         <div className="signup-card">
@@ -247,13 +255,13 @@ export default function SignupPage() {
               MR
             </button>
           </div>
-          
+
           {errors.general && (
             <div className="alert alert-danger" role="alert">
               {errors.general}
             </div>
           )}
-          
+
           <form onSubmit={handleSubmit} noValidate>
             <div className="form-group">
               <label htmlFor="phone" className="form-label">
@@ -273,7 +281,7 @@ export default function SignupPage() {
                 <span className="error-message">{errors.phone}</span>
               )}
             </div>
-            
+
             <div className="form-group">
               <label htmlFor="email" className="form-label">
                 {content[language].email}
@@ -293,21 +301,35 @@ export default function SignupPage() {
             </div>
 
             <div className="form-group">
-              <label htmlFor="role" className="form-label">
+              <label className="form-label">
                 {content[language].roleLabel}
               </label>
-              <select
-                name="role"
-                id="role"
-                className="form-control"
-                value={formData.role}
-                onChange={handleChange}
-              >
-                <option value="seeker">{content[language].roleSeeker}</option>
-                <option value="giver">{content[language].roleGiver}</option>
-              </select>
+              <div className="role-selection-wrapper">
+                <button
+                  type="button"
+                  className={`role-option-btn ${formData.role === "seeker" ? "active" : ""}`}
+                  onClick={() =>
+                    handleChange({ target: { name: "role", value: "seeker" } })
+                  }
+                >
+                  <span className="role-icon">🔍</span>
+                  {content[language].roleSeeker}
+                </button>
+                <button
+                  type="button"
+                  className={`role-option-btn ${formData.role === "giver" ? "active" : ""}`}
+                  onClick={() =>
+                    handleChange({ target: { name: "role", value: "giver" } })
+                  }
+                >
+                  <span className="role-icon">💼</span>
+                  {content[language].roleGiver}
+                </button>
+              </div>
+              {/* Hidden input to ensure form compatibility if needed */}
+              <input type="hidden" name="role" value={formData.role} />
             </div>
-            
+
             <div className="form-group">
               <label htmlFor="password" className="form-label">
                 {content[language].pin}
@@ -326,7 +348,7 @@ export default function SignupPage() {
                 <span className="error-message">{errors.password}</span>
               )}
             </div>
-            
+
             {/* <div className="form-group">
               <label htmlFor="confirmPassword" className="form-label">
                 {content[language].confirmPassword}
@@ -345,8 +367,10 @@ export default function SignupPage() {
                 <span className="error-message">{errors.confirmPassword}</span>
               )}
             </div> */}
-            
-            <div className={`terms-checkbox ${errors.agreeTerms ? "is-invalid" : ""}`}>
+
+            <div
+              className={`terms-checkbox ${errors.agreeTerms ? "is-invalid" : ""}`}
+            >
               <input
                 type="checkbox"
                 id="agreeTerms"
@@ -356,28 +380,33 @@ export default function SignupPage() {
                 required
               />
               <label htmlFor="agreeTerms" className="terms-text">
-                {content[language].agreeTerms.split('Terms and Conditions')[0]}
-                <Link to="/terms" className="terms-link">{content[language].termsAndConditions}</Link>
-                {' '}{language === 'hi' ? 'और' : language === 'mr' ? 'आणि' : 'and'}{' '}
-                <Link to="/privacy" className="terms-link">{content[language].privacyPolicy}</Link>
+                {content[language].agreeTerms.split("Terms and Conditions")[0]}
+                <Link to="/terms" className="terms-link">
+                  {content[language].termsAndConditions}
+                </Link>{" "}
+                {language === "hi" ? "और" : language === "mr" ? "आणि" : "and"}{" "}
+                <Link to="/privacy" className="terms-link">
+                  {content[language].privacyPolicy}
+                </Link>
               </label>
             </div>
             {errors.agreeTerms && (
               <span className="error-message">{errors.agreeTerms}</span>
             )}
-            
-            <button 
-              type="submit" 
-              className="btn-signup"
-              disabled={isLoading}
-            >
-              {isLoading ? content[language].creatingAccount : content[language].signUp}
+
+            <button type="submit" className="btn-signup" disabled={isLoading}>
+              {isLoading
+                ? content[language].creatingAccount
+                : content[language].signUp}
             </button>
           </form>
-          
+
           <div className="login-link-container">
             <span className="login-text">
-              {content[language].alreadyHaveAccount} <Link to="/login" className="login-link">{content[language].login}</Link>
+              {content[language].alreadyHaveAccount}{" "}
+              <Link to="/login" className="login-link">
+                {content[language].login}
+              </Link>
             </span>
           </div>
         </div>
