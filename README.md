@@ -15,7 +15,7 @@
 [![Multer](https://img.shields.io/badge/Multer-Uploads-777777)](https://github.com/expressjs/multer)
 [![Web%20Speech%20API](https://img.shields.io/badge/Web%20Speech%20API-Browser-FF6F00)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)
 [![Speech%20Synthesis](https://img.shields.io/badge/Speech%20Synthesis-Browser-FF6F00)](https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis)
-[![Gemini](https://img.shields.io/badge/Google%20Gemini-API-4285F4?logo=google&logoColor=white)](https://ai.google.dev/)
+[![Meta%20Llama](https://img.shields.io/badge/Meta%20Llama%203.3%2070B-AI-0467DF?logo=meta&logoColor=white)](https://www.llama.com/)
 
 ## Overview
 
@@ -25,10 +25,13 @@ KaamKhojAI is a voice-first employment platform designed to bridge the gap betwe
 
 - **Voice-First Interface**: Complete profile creation through guided voice interaction
 - **Multilingual Support**: English, Hindi, and Marathi with real-time language switching
-- **AI-Powered Assistance**: Conversational profile building using Gemini
-- **Smart Job Matching**: Rule-based recommendation engine with constraint relaxation
-- **Secure Authentication**: JWT-based auth for workers and contractors
-- **Responsive Design**: Mobile-first UI built with React and Tailwind CSS
+- **AI-Powered Assistance**: Conversational profile building using Meta Llama 3.3 70B
+- **Smart Job Matching**: Rule-based recommendation engine with staged matching logic
+- **Dual Authentication**: OTP-based for workers (Twilio), traditional email/password for contractors
+- **Contractor Dashboard**: SaaS-style interface with job management and application tracking
+- **Dynamic Translation**: Real-time job content translation in EN/HI/MR using i18next
+- **Application Management**: Track and manage job applications with status updates
+- **Responsive Design**: Mobile-first UI built with React, Bootstrap, and custom CSS
 - **Text-to-Speech**: Voice feedback for recommended jobs and system messages
 - **Trust & Verification Badges**: Visible tags like Verified, Police Verified, Skill Tested, Top Rated to signal reliability
 - **Composite Trust Score**: Weighted score derived from customer ratings, job completion rate, and verified documents
@@ -55,7 +58,7 @@ KaamKhojAI addresses these challenges through:
 ```
 ┌────────────────────────┐
 │      Frontend          │
-│  React + CSS           │
+│  React + Bootstrap     │
 │  Voice UI + i18next    │
 └──────────┬─────────────┘
            │
@@ -63,42 +66,46 @@ KaamKhojAI addresses these challenges through:
            │
            ▼
 ┌────────────────────────┐
-│  Voice Extraction      │
+│  Voice Processing      │
 │  Regex-based extractor │
-│  Gemini     │
+│  Meta Llama 3.3 70B    │
 └──────────┬─────────────┘
            │
            ▼
 ┌────────────────────────┐
 │    Backend API         │
 │  Node.js + Express     │
-│  User & Job Controllers│
+│  Auth, Jobs, Apps      │
 └──────────┬─────────────┘
            │
            ▼
      MongoDB Database
-  (Users, Jobs, Profiles)
+(Users, Jobs, Applications)
 ```
 
 ## Technology Stack
 
 ### Frontend
-- **Framework**: React 18+ (Vite)
-- **Styling**: CSS
-- **Internationalization**: i18next
+- **Framework**: React 19+ (Vite 7)
+- **Styling**: Bootstrap 5.3, Custom CSS
+- **UI Icons**: Lucide React, React Icons
+- **Internationalization**: i18next, react-i18next
 - **Voice**: Web Speech API (Recognition) + Speech Synthesis (prompts)
 - **HTTP Client**: Axios
+- **Routing**: React Router DOM v7
 
 ### Backend
 - **Runtime**: Node.js 18+
-- **Framework**: Express.js
-- **Database**: MongoDB with Mongoose ODM
+- **Framework**: Express.js 5+
+- **Database**: MongoDB with Mongoose 8+
 - **Authentication**: JWT + bcryptjs
-- **Middleware**: CORS, dotenv
+- **File Upload**: Multer 2+
+- **Middleware**: CORS, dotenv, express-fileupload
 
 ### AI/NLP
-- **Field Extraction**: Multilingual regex patterns
-- **Conversational AI**: Gemini API 
+- **Field Extraction**: Multilingual regex patterns (Hindi/Marathi/English)
+- **Conversational AI**: Meta Llama 3.3 70B via OpenRouter API
+- **Translation**: i18next with browser language detection 
 
 ## Installation
 
@@ -120,7 +127,7 @@ npm install
 # Required variables:
 # - MONGO_URI
 # - JWT_SECRET
-# - GEMINI_API_KEY 
+# - OPENROUTER_API_KEY
 # - PORT
 
 # Start the server
@@ -147,7 +154,7 @@ npm run dev
 MONGO_URI=mongodb://localhost:27017/kaamkhojai
 JWT_SECRET=your_jwt_secret_key_here
 PORT=5000
-GEMINI_API_KEY=your_gemini_api_key_here
+OPENROUTER_API_KEY=your_openrouter_api_key_here
 NODE_ENV=development
 ```
 
@@ -242,6 +249,18 @@ These additions stay within the current codebase and can be introduced behind ex
 ### Jobs
 - `GET /api/jobs` — List all jobs
 - `POST /api/jobs` — Create a new job (contractors only)
+- `GET /api/jobs/:id` — Get a specific job
+- `PUT /api/jobs/:id` — Update a job (owner only)
+- `DELETE /api/jobs/:id` — Delete a job (owner only)
+
+### Applications
+- `POST /api/applications` — Apply for a job
+- `GET /api/applications/job/:jobId` — Get applications for a job
+- `GET /api/applications/user/:userId` — Get user's applications
+- `PATCH /api/applications/:id/status` — Update application status
+
+### Translation
+- `POST /api/translate` — Translate text between languages
 
 ## Job Matching Algorithm
 
@@ -255,9 +274,9 @@ The recommendation engine uses a rule-based, staged matching process:
 
 ## Architecture Overview (Concise)
 
-- **Frontend**: React SPA with voice capture (Web Speech API), Speech Synthesis prompts, multilingual UI (i18next), and job browsing/posting.
-- **Backend**: Node/Express REST API for auth, voice processing, profile creation, and jobs; deterministic regex extractor; optional Gemini chat.
-- **Data**: MongoDB (Auth users, worker profiles, jobs, trust metadata: badges/score/ratings/job stats/doc status).
+- **Frontend**: React 19 SPA with voice capture (Web Speech API), Speech Synthesis prompts, multilingual UI (i18next), and job browsing/posting.
+- **Backend**: Node/Express REST API for auth, voice processing, profile creation, jobs, and applications; deterministic regex extractor; Meta Llama 3.3 70B for conversational guidance.
+- **Data**: MongoDB (Auth users, worker profiles, jobs, applications, trust metadata: badges/score/ratings/job stats/doc status).
 - **Trust Layer**: Badges and trust score computed from ratings, job completion, and document validity; badges/score displayed publicly, documents kept private.
 
 ## Supported Languages
@@ -341,9 +360,11 @@ This project is intended for academic, research, and demonstration purposes.
 ## Acknowledgments
 
 - Web Speech API for browser-based voice recognition
-- Google Gemini for conversational AI capabilities
+- Meta Llama 3.3 70B via OpenRouter for conversational AI capabilities
 - i18next community for internationalization support
 - MongoDB for flexible document storage
+- Lucide React and React Icons for UI components
+- Bootstrap for responsive design framework
 
 ## Contact
 
