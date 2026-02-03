@@ -16,7 +16,7 @@
   text-align: center;
   max-width: 600px;
   padding: 20px;
-  box-shadow: 0 6px 24px rgba(17, 24, 39, 0.08);
+  /* box-shadow: 0 6px 24px rgba(17, 24, 39, 0.08); */
   background: #fff;
 }
 

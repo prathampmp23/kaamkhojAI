@@ -114,8 +114,8 @@
 }
 
 .action-button.secondary {
-  background-color: #f3f4f6;
-  color: #111827;
+  background-color: #000000;
+  color: #ffffff;
 }
 
 .action-button.danger {
@@ -137,10 +137,6 @@
   background-color: #0b1220;
 }
 
-.action-button.secondary:hover {
-  background-color: #e5e7eb;
-}
-
 .action-button.danger:hover {
   background-color: #fecaca;
 }
@@ -156,7 +152,6 @@
 
 @media (max-width: 768px) {
   .dashboard-container {
-    margin: 76px 12px 24px;
     padding: 16px;
   }
   
@@ -233,6 +228,7 @@
   border-radius: 14px;
   padding: 16px;
   transition: box-shadow 0.2s;
+  margin-bottom: 10px;
 }
 
 .row-between {

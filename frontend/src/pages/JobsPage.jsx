@@ -261,9 +261,9 @@ const JobsPage = () => {
     );
   };
 
-  if (loading && !loadingMore) {
-    return <div className="jobs-loading-screen"><div className="spinner"></div><p>Searching...</p></div>;
-  }
+  // if (loading) {
+  //   return <div className="jobs-loading-screen"><div className="spinner"></div><p>Searching...</p></div>;
+  // }
 
   return (
     <>

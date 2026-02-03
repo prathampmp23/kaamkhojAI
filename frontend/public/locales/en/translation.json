@@ -63,6 +63,30 @@
         ]
     },
     "jobListings": "Job Opportunities",
+    "capabilities": "Capabilities",
+    "bento": {
+        "title": "Built for the Next Billion"
+    },
+    "features": {
+        "vernacular": {
+            "title": "Vernacular AI Search",
+            "desc": "Speak or type in English, Hindi, or Marathi. Our AI understands every dialect."
+        },
+        "voice": {
+            "title": "Voice Profiles",
+            "desc": "No resume needed. Just tell us your experience."
+        },
+        "verified": {
+            "title": "100% Verified",
+            "desc": "Aadhaar verified employers only."
+        },
+        "local": {
+            "title": "Hyper-Local",
+            "desc": "Work within 5km of home."
+        }
+    },
+    "getStarted": "Get Started",
+    "watchDemo": "Watch Demo",
     "aiPreview": {
         "title": "Let Our AI Help You",
         "description": "Don't worry about typing. Just speak, and our AI assistant will fill out your profile for you. It's fast, easy, and gets you closer to your next job.",
@@ -76,8 +100,13 @@
         "avatarLabel": "AI"
     },
     "hero": {
+        "heading": {
+            "line1": "Sahi Kaam,",
+            "line2": "Sahi Waqt Par."
+        },
+        "tagline": "100% Vernacular AI Matching",
+        "subtitle": "The first job platform built for Bharat. Just talk to our AI in your native language and get matched to jobs within 5km instantly.",
         "title": "Find Your Perfect Job",
-        "subtitle": "Fill forms using voice and reach your new job",
         "popularSearches": "Popular jobs",
         "popularTags": [
             "Driver",

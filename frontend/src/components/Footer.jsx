@@ -24,7 +24,7 @@ const Footer = () => {
 
         {/* Co-Founders Side */}
         <div className="footer-founders-side">
-          <h4 className="founders-label">{t("footer.coFounders", "Co-Founders")}</h4>
+          <h4 className="founders-label">{t("footer.Founders", "Founders")}</h4>
           <div className="founders-list">
             <span>Manthan</span>
             <span>Pratham</span>

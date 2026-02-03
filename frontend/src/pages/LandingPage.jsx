@@ -56,8 +56,8 @@ const LandingPage = () => {
               ✨ {t("hero.tagline", "100% Vernacular AI Matching")}
             </div>
             <h1 className="hereo-head-heading">
-              Sahi Kaam, <br />
-              <span className="text-gradient">Sahi Waqt Par.</span>
+              {t("hero.heading.line1", "Sahi Kaam,")} <br />
+              <span className="text-gradient">{t("hero.heading.line2", "Sahi Waqt Par.")}</span>
             </h1>
             <p className="hero-subtitle">
               {t(
@@ -82,7 +82,7 @@ const LandingPage = () => {
         {/* Bento Grid Features */}
         <section className="bento-container" id="features">
           <h2 className="section-label">{t("capabilities", "Capabilities")}</h2>
-          <h3 className="section-title">
+          <h3 className="section-title-heading">
             {t("bento.title", "Built for the Next Billion")}
           </h3>
 

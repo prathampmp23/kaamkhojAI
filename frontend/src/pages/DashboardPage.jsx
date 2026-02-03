@@ -322,51 +322,54 @@ const DashboardPage = () => {
         </div>
 
         <div className="dashboard-grid">
-          <div className="dashboard-card">
-            <div className="card-header">
-              <h2>{content[language].profile}</h2>
+          {role === 'seeker' && (
+            <div className="dashboard-card">
+              <div className="card-header">
+                <h2>{content[language].profile}</h2>
+              </div>
+              <div className="card-body">
+                {loadingProfile ? (
+                  <p>{content[language].loading}</p>
+                ) : profile ? (
+                  <>
+                    <p>
+                      <strong>{content[language].name}:</strong> {profile.name || '-'}
+                    </p>
+                    <p>
+                      <strong>Job Type:</strong> {profile.job_title || '-'}
+                    </p>
+                    <p>
+                      <strong>Experience:</strong> {profile.experience ?? '-'}
+                    </p>
+                    <p>
+                      <strong>Phone:</strong> {profile.phone || '-'}
+                    </p>
+                    <p>
+                      <strong>Address:</strong> {profile.address || '-'}
+                    </p>
+                    <br />
+                    <div className="action-buttons">
+                      <button className="action-button primary" onClick={() => navigate('/profile')}>
+                        {content[language].viewProfile}
+                      </button>
+                      <button className="action-button secondary" onClick={() => navigate('/assistant')}>
+                        {content[language].editProfile}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="profile-incomplete">{content[language].profileIncomplete}</p>
+                    <div className="action-buttons">
+                      <button className="action-button primary" onClick={() => navigate('/assistant')}>
+                        {content[language].completeProfileWithAI}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="card-body">
-              {loadingProfile ? (
-                <p>{content[language].loading}</p>
-              ) : profile ? (
-                <>
-                  <p>
-                    <strong>{content[language].name}:</strong> {profile.name || '-'}
-                  </p>
-                  <p>
-                    <strong>Job Type:</strong> {profile.job_title || '-'}
-                  </p>
-                  <p>
-                    <strong>Experience:</strong> {profile.experience ?? '-'}
-                  </p>
-                  <p>
-                    <strong>Phone:</strong> {profile.phone || '-'}
-                  </p>
-                  <p>
-                    <strong>Address:</strong> {profile.address || '-'}
-                  </p>
-                  <div className="action-buttons">
-                    <button className="action-button primary" onClick={() => navigate('/profile')}>
-                      {content[language].viewProfile}
-                    </button>
-                    <button className="action-button secondary" onClick={() => navigate('/assistant')}>
-                      {content[language].editProfile}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="profile-incomplete">{content[language].profileIncomplete}</p>
-                  <div className="action-buttons">
-                    <button className="action-button primary" onClick={() => navigate('/assistant')}>
-                      {content[language].completeProfileWithAI}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+          )}
 
           {role === 'seeker' ? (
             <div className="dashboard-card">

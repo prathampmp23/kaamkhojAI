@@ -223,8 +223,7 @@ select.form-control {
   }
   .signup-card {
     padding: 30px 20px;
-    border-radius: 0; /* Full width feel on mobile */
-    min-height: 100vh;
+    /* min-height: 60vh; */
     max-width: 100%;
   }
 }

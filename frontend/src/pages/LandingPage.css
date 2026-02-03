@@ -162,11 +162,11 @@ body {
 
 .section-label {
   color: var(--primary);
-  font-size: 0.9rem;
+  font-size: 1.2rem;
   font-weight: 800;
   text-transform: uppercase;
 }
-.section-title {
+.section-title-heading {
   font-size: 2.5rem;
   font-weight: 800;
   margin-bottom: 40px;
@@ -182,14 +182,13 @@ body {
 .bento-card {
   padding: 30px;
   border-radius: 32px;
-  border: 1px solid #e2e8f0;
   position: relative;
   transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: inset 30px 30px 40px rgba(0, 0, 0, 0.037);
 }
 
 .bento-card:hover {
   transform: translateY(-10px);
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.1);
 }
 
 .card-icon {
@@ -206,7 +205,7 @@ body {
 }
 
 .dark-card {
-  background: linear-gradient(135deg, #ffffff, #001affda);
+  background: linear-gradient(135deg, #f8fafc 0%, #d8e8fc 100%);
   color: rgb(0, 0, 0);
   border: none;
 }
@@ -217,11 +216,11 @@ body {
 }
 
 .green-card {
-  background: linear-gradient(135deg, #21f87aa5, #ffffff);
+  background: linear-gradient(135deg, #21f87b2d, #ffffff);
   border-color: #ffedd5;
 }
 .accent-card {
-  background: linear-gradient(135deg, #ffffff, #ea1b089e);
+  background: linear-gradient(135deg, #ffffff, #ea1b0812);
   border-color: #e0f2fe;
 }
 
@@ -287,8 +286,8 @@ body {
   position: absolute;
   padding: 10px 20px;
   border-radius: 14px;
-  font-weight: bold;
-  font-size: 0.95rem;
+  font-weight: bolder;
+  font-size: 2rem;
   /* Glassmorphism Effect */
   background: rgba(30, 1, 1, 0.08);
   backdrop-filter: blur(8px);
@@ -302,28 +301,30 @@ body {
 
 /* Individual placements & varied rotations for a "Natural" look */
 .float-1 {
-  top: 10%;
-  left: 10%;
+  top: 12%;
+  left: 12%;
   transform: rotate(-8deg);
   animation: float-slow 5s infinite ease-in-out;
   border-left: 3px solid #2563eb; /* Blue accent */
+  border-right: 3px solid #2563eb; /* Blue accent */
 }
 
 .float-2 {
-  bottom: 15%;
-  right: 15%;
+  bottom: 25%;
+  right: 12%;
   transform: rotate(6deg);
   animation: float-slow 7s infinite ease-in-out reverse;
   border-left: 3px solid #f59e0b; /* Orange accent */
+  border-right: 3px solid #f59e0b; /* Orange accent */
 }
 
 .float-3 {
-  top: 45%;
-  left: 35%;
+  top: 95%;
+  left: 30%;
   transform: rotate(-2deg);
   animation: float-slow 6s infinite ease-in-out 1s;
-  border-left: 3px solid #0bdef5; /* Orange accent */
-  background: rgba(37, 99, 235, 0.2); /* Slight tint for variety */
+  border-left: 3px solid #000000; /* Orange accent */
+  border-right: 3px solid #000000; /* Orange accent */
 }
 
 /* Background glow to make the tags pop */
