@@ -205,7 +205,7 @@ body {
 }
 
 .dark-card {
-  background: linear-gradient(135deg, #f8fafc 0%, #d8e8fc 100%);
+  background: linear-gradient(135deg, #ffffff 50%, #e2e8f0 100%);
   color: rgb(0, 0, 0);
   border: none;
 }
@@ -219,6 +219,7 @@ body {
   background: linear-gradient(135deg, #21f87b2d, #ffffff);
   border-color: #ffedd5;
 }
+
 .accent-card {
   background: linear-gradient(135deg, #ffffff, #ea1b0812);
   border-color: #e0f2fe;
@@ -307,19 +308,21 @@ body {
   animation: float-slow 5s infinite ease-in-out;
   border-left: 3px solid #2563eb; /* Blue accent */
   border-right: 3px solid #2563eb; /* Blue accent */
+  color: blue;
 }
 
 .float-2 {
-  bottom: 25%;
-  right: 12%;
+  bottom: 35%;
+  right: 22%;
   transform: rotate(6deg);
   animation: float-slow 7s infinite ease-in-out reverse;
   border-left: 3px solid #f59e0b; /* Orange accent */
   border-right: 3px solid #f59e0b; /* Orange accent */
+  color: #f59e0b;
 }
 
 .float-3 {
-  top: 95%;
+  top: 75%;
   left: 30%;
   transform: rotate(-2deg);
   animation: float-slow 6s infinite ease-in-out 1s;

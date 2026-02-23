@@ -272,7 +272,7 @@ const JobsPage = () => {
         <div className="jobs-max-width">
           <header className="jobs-hero">
             <div className="hero-content">
-              <h1>{mode === "public" ? "Explore Jobs" : mode === "recommended" ? "For You" : "Near You"}</h1>
+              <h1>{mode === "public" ? "Explore Jobs" : mode === "recommended" ? "Jobs For You" : "Jobs Near You"}</h1>
               <p>Verified opportunities updated daily.</p>
             </div>
             {isAuthenticated && currentUser?.profileCompleted && (
@@ -282,7 +282,7 @@ const JobsPage = () => {
                   {jobViewMode === "recommended" ? "Nearby" : "Recommended"}
                 </button>
                 {jobViewMode === "recommended" && (
-                  <button className="control-btn refresh" onClick={() => fetchJobs({ forceRefresh: true })}><RefreshCw size={18} /></button>
+                  <button className="control-btn refresh" onClick={() => fetchJobs({ forceRefresh: true })}><RefreshCw size={18} />Refresh</button>
                 )}
               </div>
             )}

@@ -61,7 +61,7 @@
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(17, 24, 39, 0.06);
+  /* box-shadow: 0 4px 20px rgba(17, 24, 39, 0.06); */
   padding: 16px;
 }
 
@@ -90,7 +90,7 @@
 
 .job-card-actions {
   margin-top: 10px;
-  display: flex;
+  /* display: flex; */
   justify-content: flex-end;
 }
 
@@ -105,6 +105,22 @@
   text-decoration: none;
   font-weight: 700;
   font-size: 12px;
+}
+
+.job-apply-btn {
+  display: inline-flex;
+  border: none;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #2f57ff;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 12px;
+  margin-top: 5px;
+  cursor: pointer;
 }
 
 .job-call-btn:hover {
@@ -143,7 +159,7 @@
   font-size: 11px;
   padding: 4px 8px;
   border-radius: 999px;
-  background: rgba(59, 130, 246, 0.10);
+  background: rgba(59, 130, 246, 0.1);
   color: #1e3a8a;
   border: 1px solid rgba(59, 130, 246, 0.18);
   max-width: 100%;
@@ -182,12 +198,10 @@
   word-break: break-word;
 }
 
-
 .side-title {
-  font-size: 1rem;
   font-weight: 600;
   color: #1f2937;
-  margin-bottom: 10px;
+  padding: 20px 0px;
 }
 
 .conversation-list {
@@ -202,8 +216,12 @@
 .conv-item {
   display: flex;
 }
-.conv-item.user { justify-content: flex-end; }
-.conv-item.ai { justify-content: flex-start; }
+.conv-item.user {
+  justify-content: flex-end;
+}
+.conv-item.ai {
+  justify-content: flex-start;
+}
 
 .conv-bubble {
   border-radius: 18px 18px 3px 18px;
@@ -234,8 +252,13 @@
   border-radius: 10px;
   padding: 8px 10px;
 }
-.summary-label { color: #374151; font-weight: 600; }
-.summary-value { color: #111827; }
+.summary-label {
+  color: #374151;
+  font-weight: 600;
+}
+.summary-value {
+  color: #111827;
+}
 
 .sphere {
   width: 130px;
@@ -265,8 +288,8 @@
 }
 
 video {
-  transform: scale(1.3); 
-  transform-origin: center; 
+  transform: scale(1.3);
+  transform-origin: center;
 }
 
 .voice-orb {
@@ -275,7 +298,9 @@ video {
   border-radius: 50%;
   position: relative;
   top: 15px;
-  box-shadow: 0 0 30px rgb(37, 80, 253), 0 0 100px rgba(118, 75, 162, 0.4),
+  box-shadow:
+    0 0 30px rgb(37, 80, 253),
+    0 0 100px rgba(118, 75, 162, 0.4),
     inset 0 0 30px rgba(255, 255, 255, 0.2);
   transition: all 0.1s ease;
   overflow: hidden;
@@ -335,7 +360,6 @@ video {
   transition: background-color 0.3s;
 }
 
-
 .control-button:hover {
   background-color: #b8b8b8;
   transform: scale(1.1);
@@ -375,7 +399,6 @@ video {
 
 /* ✅ MOBILE RESPONSIVE FIX */
 @media (max-width: 768px) {
-
   /* Page Layout */
   .ai-assistant-page {
     flex-direction: column;
@@ -456,7 +479,6 @@ video {
 
 /* Extra Small Phones */
 @media (max-width: 480px) {
-
   .ai-assistant-page {
     padding: 10px;
     margin-top: 60px;
@@ -494,4 +516,3 @@ video {
     max-height: 240px;
   }
 }
-

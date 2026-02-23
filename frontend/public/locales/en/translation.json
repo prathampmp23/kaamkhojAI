@@ -78,7 +78,7 @@
         },
         "verified": {
             "title": "100% Verified",
-            "desc": "Aadhaar verified employers only."
+            "desc": "Verified employers only."
         },
         "local": {
             "title": "Hyper-Local",

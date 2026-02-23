@@ -312,7 +312,6 @@ export default function SignupPage() {
                     handleChange({ target: { name: "role", value: "seeker" } })
                   }
                 >
-                  <span className="role-icon">🔍</span>
                   {content[language].roleSeeker}
                 </button>
                 <button
@@ -322,7 +321,6 @@ export default function SignupPage() {
                     handleChange({ target: { name: "role", value: "giver" } })
                   }
                 >
-                  <span className="role-icon">💼</span>
                   {content[language].roleGiver}
                 </button>
               </div>

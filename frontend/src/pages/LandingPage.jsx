@@ -71,10 +71,15 @@ const LandingPage = () => {
                   {t("getStarted", "Get Started")} <ArrowRight size={20} />
                 </button>
               </Link>
-              <button className="cta-secondary">
+              {/* <button className="cta-secondary">
                 <Play size={18} fill="currentColor" />{" "}
                 {t("watchDemo", "Watch Demo")}
-              </button>
+              </button> */}
+              <Link to="/jobs" className="link">
+                <button className="cta-secondary">
+                  {t("findJobs", "Find Jobs")} 
+                </button>
+              </Link>
             </div>
           </div>
         </section>
