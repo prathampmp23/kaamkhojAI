@@ -6,6 +6,7 @@ import NavigationBar from '../components/NavigationBar';
 import Footer from '../components/Footer';
 import server from '../environment';
 import './DashboardPage.css';
+import { MapPin, IndianRupee } from 'lucide-react';
 
 const DashboardPage = () => {
   const { currentUser, isAuthenticated } = useAuthContext();
@@ -189,6 +190,19 @@ const DashboardPage = () => {
       });
       const jobsData = await jobsRes.json();
       setMyJobs(jobsRes.ok ? jobsData.jobs || [] : []);
+      setPostJobForm({
+        jobName: '',
+        company: '',
+        jobDescription: '',
+        location: '',
+        salary: '',
+        contactPhone: '',
+        category: 'other',
+        minAge: 18,
+        availability: 'full-time',
+        skillsRequired: '',
+        experience: '',
+      });
     } catch (err) {
       console.error(err);
       alert(err.message || 'Failed to create job');
@@ -385,8 +399,8 @@ const DashboardPage = () => {
                         <h3>{app.job?.jobName || 'Job'}</h3>
                         <p className="job-description">{app.job?.company || ''}</p>
                         <div className="job-details">
-                          <p>📍 {app.job?.location || ''}</p>
-                          <p>💰 {app.job?.salary || ''}</p>
+                          <p className="job-detail-item"><MapPin size={16} className="icon" /> {app.job?.location || ''}</p>
+                          <p className="job-detail-item"><IndianRupee size={16} className="icon" /> {app.job?.salary || ''}</p>
                         </div>
                         <p className="status-row">
                           <span className={`status-pill status-${app.status}`}>{app.status}</span>
@@ -480,8 +494,8 @@ const DashboardPage = () => {
                     <h3>{job.jobName}</h3>
                     <p className="job-description">{job.jobDescription}</p>
                     <div className="job-details">
-                      <p>📍 {job.location}</p>
-                      <p>💰 {job.salary}</p>
+                      <p className="job-detail-item"><MapPin size={16} className="icon" /> {job.location}</p>
+                      <p className="job-detail-item"><IndianRupee size={16} className="icon" /> {job.salary}</p>
                     </div>
                     <div className="row-actions">
                       <button className="job-action-btn" onClick={() => viewApplicants(job._id)}>

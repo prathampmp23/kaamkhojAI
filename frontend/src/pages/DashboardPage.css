@@ -7,9 +7,9 @@
 
 .dashboard-container {
   flex: 1;
-  max-width: 1120px;
+  max-width: 1020px;
   width: 100%;
-  margin: 88px auto 40px;
+  margin: 4rem auto;
   padding: 20px;
   background-color: #ffffff;
   border-radius: 14px;
@@ -547,4 +547,14 @@
   content: "🤖 ";
   margin-right: 5px;
   font-size: 1.1em;
+}
+
+.job-detail-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.job-detail-item .icon {
+  flex-shrink: 0;
 }
