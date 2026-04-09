@@ -6,28 +6,30 @@ import Footer from "../components/Footer";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { translateJobs } from "../utils/translateJobs";
-import { 
-  MapPin, 
-  Banknote, 
-  Briefcase, 
-  History, 
-  Star, 
-  ArrowRight, 
-  ChevronLeft, 
+import {
+  MapPin,
+  Banknote,
+  Briefcase,
+  History,
+  Star,
+  ArrowRight,
+  ChevronLeft,
   ChevronRight,
-  RefreshCw 
+  RefreshCw,
 } from "lucide-react";
 import "./JobsPage.css";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://kaamkhojaibackend.onrender.com";
+const API_URL =
+  import.meta.env.VITE_API_URL || "https://kaamkhojaibackend.onrender.com";
 const PAGE_SIZE = 9;
 const LOCATION_TIMEOUT_MS = 2500;
 
 const JobsPage = () => {
   const { i18n } = useTranslation();
   const navigate = useNavigate();
-  const { currentUser, isAuthenticated, jobViewMode, toggleJobViewMode } = useAuthContext();
-  
+  const { currentUser, isAuthenticated, jobViewMode, toggleJobViewMode } =
+    useAuthContext();
+
   const [recommendedJobs, setRecommendedJobs] = useState([]);
   const [otherJobs, setOtherJobs] = useState([]);
   const [allJobs, setAllJobs] = useState([]);
@@ -69,7 +71,9 @@ const JobsPage = () => {
         if (jobId) map[jobId] = app.status;
       }
       setApplicationStatusByJobId(map);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, [isAuthenticated, currentUser?.role]);
 
   useEffect(() => {
@@ -77,85 +81,201 @@ const JobsPage = () => {
   }, [refreshMyApplications]);
 
   const handleApply = async (jobId) => {
-    if (!isAuthenticated) { navigate("/login"); return; }
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
     const role = String(currentUser?.role || "seeker").toLowerCase();
-    if (role !== "seeker") { alert("Only job seekers can apply."); return; }
+    if (role !== "seeker") {
+      alert("Only job seekers can apply.");
+      return;
+    }
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_URL}/api/applications`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ jobId }),
       });
       if (!res.ok) throw new Error("Failed to apply");
       setApplicationStatusByJobId((prev) => ({ ...prev, [jobId]: "applied" }));
       alert("Applied successfully!");
-    } catch (e) { alert(e.message); }
+    } catch (e) {
+      alert(e.message);
+    }
   };
 
   const handleUnapply = async (jobId) => {
-    if (!isAuthenticated) { navigate("/login"); return; }
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/api/applications/job/${jobId}/withdraw`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(
+        `${API_URL}/api/applications/job/${jobId}/withdraw`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       if (!res.ok) throw new Error("Failed to unapply");
-      setApplicationStatusByJobId((prev) => ({ ...prev, [jobId]: "withdrawn" }));
+      setApplicationStatusByJobId((prev) => ({
+        ...prev,
+        [jobId]: "withdrawn",
+      }));
       alert("Unapplied successfully!");
-    } catch (e) { alert(e.message); }
+    } catch (e) {
+      alert(e.message);
+    }
   };
 
   const getCurrentPosition = () => {
     return new Promise((resolve) => {
       if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
-          (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+          (pos) =>
+            resolve({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+            }),
           () => resolve(null),
           {
             enableHighAccuracy: false,
             timeout: LOCATION_TIMEOUT_MS,
             maximumAge: 5 * 60 * 1000,
-          }
+          },
         );
       } else resolve(null);
     });
   };
 
   // FIXED: Removed 'pages' from dependency array to stop infinite loop
-  const fetchJobs = useCallback(async ({ forceRefresh = false, nextPage = false } = {}) => {
-    if (nextPage) setLoadingMore(true); else setLoading(true);
-    setError(null);
+  const fetchJobs = useCallback(
+    async ({ forceRefresh = false, nextPage = false } = {}) => {
+      if (nextPage) setLoadingMore(true);
+      else setLoading(true);
+      setError(null);
 
-    // Access pages via Ref to avoid dependency loop
-    const currentPages = pagesRef.current;
-    const excludeParam = nextPage ? currentPages.flatMap((p) => [...(p.recommendedJobs || []), ...(p.otherJobs || []), ...(p.allJobs || [])]).map((j) => j?._id).filter(Boolean).join(",") : "";
-    
-    if (!nextPage) {
-      setPages([]); setPageIndex(0); setAllJobs([]); setRecommendedJobs([]); setOtherJobs([]); setHasMore(false); setLastUpdated(null);
-    }
+      // Access pages via Ref to avoid dependency loop
+      const currentPages = pagesRef.current;
+      const excludeParam = nextPage
+        ? currentPages
+            .flatMap((p) => [
+              ...(p.recommendedJobs || []),
+              ...(p.otherJobs || []),
+              ...(p.allJobs || []),
+            ])
+            .map((j) => j?._id)
+            .filter(Boolean)
+            .join(",")
+        : "";
 
-    try {
-      let response;
-      const token = localStorage.getItem("token");
-      if (!isAuthenticated) {
-        const position = await getCurrentPosition();
-        response = await axios.get(`${API_URL}/api/jobs/public`, { params: { lat: position?.latitude, lon: position?.longitude, limit: PAGE_SIZE, exclude: excludeParam } });
-        const page = { mode: "public", allJobs: response.data.jobs || [], recommendedJobs: [], otherJobs: [], hasMore: Boolean(response.data.hasMore) };
-        setPages((prev) => (nextPage ? [...prev, page] : [page]));
-        setAllJobs(page.allJobs); setMode("public"); setHasMore(page.hasMore);
-        return page;
-      } else {
-        const hasProfile = currentUser?.profileCompleted === true;
-        if (hasProfile && jobViewMode === "recommended") {
-          response = await axios.get(`${API_URL}/api/jobs/recommended`, { headers: { Authorization: `Bearer ${token}` }, params: { forceRefresh, limit: PAGE_SIZE, exclude: excludeParam } });
-          const recommended = response.data.recommendedJobs || [];
-          const other = response.data.otherJobs || [];
+      if (!nextPage) {
+        setPages([]);
+        setPageIndex(0);
+        setAllJobs([]);
+        setRecommendedJobs([]);
+        setOtherJobs([]);
+        setHasMore(false);
+        setLastUpdated(null);
+      }
 
-          if (recommended.length === 0 && other.length === 0) {
-            const position = await getCurrentPosition();
-            const fallbackResp = await axios.get(`${API_URL}/api/jobs/public`, {
+      try {
+        let response;
+        const token = localStorage.getItem("token");
+        if (!isAuthenticated) {
+          const position = await getCurrentPosition();
+          response = await axios.get(`${API_URL}/api/jobs/public`, {
+            params: {
+              lat: position?.latitude,
+              lon: position?.longitude,
+              limit: PAGE_SIZE,
+              exclude: excludeParam,
+            },
+          });
+          const page = {
+            mode: "public",
+            allJobs: response.data.jobs || [],
+            recommendedJobs: [],
+            otherJobs: [],
+            hasMore: Boolean(response.data.hasMore),
+          };
+          setPages((prev) => (nextPage ? [...prev, page] : [page]));
+          setAllJobs(page.allJobs);
+          setMode("public");
+          setHasMore(page.hasMore);
+          return page;
+        } else {
+          const hasProfile = currentUser?.profileCompleted === true;
+          if (hasProfile && jobViewMode === "recommended") {
+            response = await axios.get(`${API_URL}/api/jobs/recommended`, {
+              headers: { Authorization: `Bearer ${token}` },
+              params: { forceRefresh, limit: PAGE_SIZE, exclude: excludeParam },
+            });
+            const recommended = response.data.recommendedJobs || [];
+            const other = response.data.otherJobs || [];
+
+            if (recommended.length === 0 && other.length === 0) {
+              const position = await getCurrentPosition();
+              const fallbackResp = await axios.get(
+                `${API_URL}/api/jobs/public`,
+                {
+                  headers: { Authorization: `Bearer ${token}` },
+                  params: {
+                    lat: position?.latitude,
+                    lon: position?.longitude,
+                    limit: PAGE_SIZE,
+                    exclude: excludeParam,
+                  },
+                },
+              );
+              const fallbackPage = {
+                mode: "public",
+                allJobs: fallbackResp.data.jobs || [],
+                recommendedJobs: [],
+                otherJobs: [],
+                hasMore: Boolean(fallbackResp.data.hasMore),
+              };
+              setPages((prev) =>
+                nextPage ? [...prev, fallbackPage] : [fallbackPage],
+              );
+              setAllJobs(fallbackPage.allJobs);
+              setRecommendedJobs([]);
+              setOtherJobs([]);
+              setMode("public");
+              setHasMore(fallbackPage.hasMore);
+              return fallbackPage;
+            }
+
+            const page = {
+              mode: "recommended",
+              allJobs: [],
+              recommendedJobs: recommended,
+              otherJobs: other,
+              hasMore: Boolean(response.data.hasMore),
+              lastUpdated: response.data.lastUpdated,
+            };
+            setPages((prev) => (nextPage ? [...prev, page] : [page]));
+            setRecommendedJobs(page.recommendedJobs);
+            setOtherJobs(page.otherJobs);
+            setLastUpdated(response.data.lastUpdated);
+            setMode("recommended");
+            setHasMore(page.hasMore);
+            return page;
+          } else {
+            const endpoint =
+              hasProfile && jobViewMode === "nearby"
+                ? `${API_URL}/api/jobs/nearby`
+                : `${API_URL}/api/jobs/public`;
+            const position =
+              hasProfile && jobViewMode === "nearby"
+                ? null
+                : await getCurrentPosition();
+            response = await axios.get(endpoint, {
               headers: { Authorization: `Bearer ${token}` },
               params: {
                 lat: position?.latitude,
@@ -164,75 +284,116 @@ const JobsPage = () => {
                 exclude: excludeParam,
               },
             });
-            const fallbackPage = {
-              mode: "public",
-              allJobs: fallbackResp.data.jobs || [],
+
+            const nearbyOrPublicJobs = response.data.jobs || [];
+            if (
+              hasProfile &&
+              jobViewMode === "nearby" &&
+              nearbyOrPublicJobs.length === 0
+            ) {
+              const fallbackPosition = await getCurrentPosition();
+              const fallbackResp = await axios.get(
+                `${API_URL}/api/jobs/public`,
+                {
+                  headers: { Authorization: `Bearer ${token}` },
+                  params: {
+                    lat: fallbackPosition?.latitude,
+                    lon: fallbackPosition?.longitude,
+                    limit: PAGE_SIZE,
+                    exclude: excludeParam,
+                  },
+                },
+              );
+              const fallbackPage = {
+                mode: "public",
+                allJobs: fallbackResp.data.jobs || [],
+                recommendedJobs: [],
+                otherJobs: [],
+                hasMore: Boolean(fallbackResp.data.hasMore),
+              };
+              setPages((prev) =>
+                nextPage ? [...prev, fallbackPage] : [fallbackPage],
+              );
+              setAllJobs(fallbackPage.allJobs);
+              setMode("public");
+              setHasMore(fallbackPage.hasMore);
+              return fallbackPage;
+            }
+
+            const page = {
+              mode: jobViewMode || "public",
+              allJobs: nearbyOrPublicJobs,
               recommendedJobs: [],
               otherJobs: [],
-              hasMore: Boolean(fallbackResp.data.hasMore),
+              hasMore: Boolean(response.data.hasMore),
             };
-            setPages((prev) => (nextPage ? [...prev, fallbackPage] : [fallbackPage]));
-            setAllJobs(fallbackPage.allJobs);
-            setRecommendedJobs([]);
-            setOtherJobs([]);
-            setMode("public");
-            setHasMore(fallbackPage.hasMore);
-            return fallbackPage;
+            setPages((prev) => (nextPage ? [...prev, page] : [page]));
+            setAllJobs(page.allJobs);
+            setMode(page.mode);
+            setHasMore(page.hasMore);
+            return page;
           }
-
-          const page = { mode: "recommended", allJobs: [], recommendedJobs: recommended, otherJobs: other, hasMore: Boolean(response.data.hasMore), lastUpdated: response.data.lastUpdated };
-          setPages((prev) => (nextPage ? [...prev, page] : [page]));
-          setRecommendedJobs(page.recommendedJobs); setOtherJobs(page.otherJobs); setLastUpdated(response.data.lastUpdated); setMode("recommended"); setHasMore(page.hasMore);
-          return page;
-        } else {
-          const endpoint = (hasProfile && jobViewMode === "nearby") ? `${API_URL}/api/jobs/nearby` : `${API_URL}/api/jobs/public`;
-          const position = (hasProfile && jobViewMode === "nearby") ? null : await getCurrentPosition();
-          response = await axios.get(endpoint, { headers: { Authorization: `Bearer ${token}` }, params: { lat: position?.latitude, lon: position?.longitude, limit: PAGE_SIZE, exclude: excludeParam } });
-
-          const nearbyOrPublicJobs = response.data.jobs || [];
-          if (hasProfile && jobViewMode === "nearby" && nearbyOrPublicJobs.length === 0) {
-            const fallbackPosition = await getCurrentPosition();
-            const fallbackResp = await axios.get(`${API_URL}/api/jobs/public`, {
-              headers: { Authorization: `Bearer ${token}` },
-              params: {
-                lat: fallbackPosition?.latitude,
-                lon: fallbackPosition?.longitude,
-                limit: PAGE_SIZE,
-                exclude: excludeParam,
-              },
-            });
-            const fallbackPage = {
-              mode: "public",
-              allJobs: fallbackResp.data.jobs || [],
-              recommendedJobs: [],
-              otherJobs: [],
-              hasMore: Boolean(fallbackResp.data.hasMore),
-            };
-            setPages((prev) => (nextPage ? [...prev, fallbackPage] : [fallbackPage]));
-            setAllJobs(fallbackPage.allJobs);
-            setMode("public");
-            setHasMore(fallbackPage.hasMore);
-            return fallbackPage;
-          }
-
-          const page = { mode: jobViewMode || "public", allJobs: nearbyOrPublicJobs, recommendedJobs: [], otherJobs: [], hasMore: Boolean(response.data.hasMore) };
-          setPages((prev) => (nextPage ? [...prev, page] : [page]));
-          setAllJobs(page.allJobs); setMode(page.mode); setHasMore(page.hasMore);
-          return page;
         }
-      }
-    } catch (err) { 
-      setError("Failed to load jobs."); 
-      return null; 
-    } finally { 
-      setLoading(false); 
-      setLoadingMore(false); 
-    }
-  }, [isAuthenticated, jobViewMode, currentUser?.profileCompleted]); // PAGES REMOVED FROM HERE
+      } catch (err) {
+        try {
+          const excludeParamForFallback = nextPage
+            ? pagesRef.current
+                .flatMap((p) => [
+                  ...(p.recommendedJobs || []),
+                  ...(p.otherJobs || []),
+                  ...(p.allJobs || []),
+                ])
+                .map((j) => j?._id)
+                .filter(Boolean)
+                .join(",")
+            : "";
 
-  useEffect(() => { 
-    fetchJobs(); 
-  }, [fetchJobs]); 
+          const fallbackResponse = await axios.get(
+            `${API_URL}/api/jobs/public`,
+            {
+              params: {
+                limit: PAGE_SIZE,
+                exclude: excludeParamForFallback,
+              },
+            },
+          );
+
+          const fallbackPage = {
+            mode: "public",
+            allJobs: fallbackResponse.data.jobs || [],
+            recommendedJobs: [],
+            otherJobs: [],
+            hasMore: Boolean(fallbackResponse.data.hasMore),
+          };
+
+          setPages((prev) =>
+            nextPage ? [...prev, fallbackPage] : [fallbackPage],
+          );
+          setAllJobs(fallbackPage.allJobs);
+          setRecommendedJobs([]);
+          setOtherJobs([]);
+          setMode("public");
+          setHasMore(fallbackPage.hasMore);
+          setError(null);
+          return fallbackPage;
+        } catch (fallbackErr) {
+          const apiMessage =
+            fallbackErr?.response?.data?.message ||
+            err?.response?.data?.message;
+          setError(apiMessage);
+          return null;
+        }
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [isAuthenticated, jobViewMode, currentUser?.profileCompleted],
+  ); // PAGES REMOVED FROM HERE
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
 
   // Translation effect
   useEffect(() => {
@@ -242,16 +403,21 @@ const JobsPage = () => {
     (async () => {
       if (cur.mode === "recommended") {
         const [trRec, trOth] = await Promise.all([
-          translateJobs(API_URL, cur.recommendedJobs || [], lang), 
-          translateJobs(API_URL, cur.otherJobs || [], lang)
+          translateJobs(API_URL, cur.recommendedJobs || [], lang),
+          translateJobs(API_URL, cur.otherJobs || [], lang),
         ]);
-        if (!cancelled) { setRecommendedJobs(trRec); setOtherJobs(trOth); }
+        if (!cancelled) {
+          setRecommendedJobs(trRec);
+          setOtherJobs(trOth);
+        }
       } else {
         const trAll = await translateJobs(API_URL, cur.allJobs || [], lang);
         if (!cancelled) setAllJobs(trAll);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [lang, pages, pageIndex]);
 
   const handleToggleMode = async () => {
@@ -267,10 +433,14 @@ const JobsPage = () => {
     setMode(p.mode);
     setHasMore(Boolean(p.hasMore));
     if (p.mode === "recommended") {
-      setRecommendedJobs(p.recommendedJobs || []); setOtherJobs(p.otherJobs || []); setAllJobs([]);
+      setRecommendedJobs(p.recommendedJobs || []);
+      setOtherJobs(p.otherJobs || []);
+      setAllJobs([]);
       if (p.lastUpdated) setLastUpdated(p.lastUpdated);
     } else {
-      setAllJobs(p.allJobs || []); setRecommendedJobs([]); setOtherJobs([]);
+      setAllJobs(p.allJobs || []);
+      setRecommendedJobs([]);
+      setOtherJobs([]);
     }
   };
 
@@ -282,10 +452,14 @@ const JobsPage = () => {
       setMode(p.mode);
       setHasMore(Boolean(p.hasMore));
       if (p.mode === "recommended") {
-        setRecommendedJobs(p.recommendedJobs || []); setOtherJobs(p.otherJobs || []); setAllJobs([]);
+        setRecommendedJobs(p.recommendedJobs || []);
+        setOtherJobs(p.otherJobs || []);
+        setAllJobs([]);
         if (p.lastUpdated) setLastUpdated(p.lastUpdated);
       } else {
-        setAllJobs(p.allJobs || []); setRecommendedJobs([]); setOtherJobs([]);
+        setAllJobs(p.allJobs || []);
+        setRecommendedJobs([]);
+        setOtherJobs([]);
       }
       return;
     }
@@ -297,7 +471,8 @@ const JobsPage = () => {
   const renderJobCard = (job) => {
     const status = applicationStatusByJobId[job._id];
     const applied = Boolean(status && status !== "withdrawn");
-    const isSeeker = String(currentUser?.role || "seeker").toLowerCase() === "seeker";
+    const isSeeker =
+      String(currentUser?.role || "seeker").toLowerCase() === "seeker";
 
     return (
       <div key={job._id} className="modern-job-card">
@@ -310,17 +485,29 @@ const JobsPage = () => {
         </div>
         <div className="card-body">
           <div className="job-details">
-            <div className="detail-item"><MapPin size={16} /> <span>{job.location}</span></div>
-            <div className="detail-item"><Banknote size={16} /> <span className="salary-tag">{job.salary}</span></div>
+            <div className="detail-item">
+              <MapPin size={16} /> <span>{job.location}</span>
+            </div>
+            <div className="detail-item">
+              <Banknote size={16} />{" "}
+              <span className="salary-tag">{job.salary}</span>
+            </div>
           </div>
           <p className="job-desc">{job.jobDescription}</p>
         </div>
         <div className="card-footer">
           <span className="exp-label">{job.experience}</span>
           {isAuthenticated && isSeeker && applied ? (
-            <button className="btn-unapply" onClick={() => handleUnapply(job._id)}>Unapply</button>
+            <button
+              className="btn-unapply"
+              onClick={() => handleUnapply(job._id)}
+            >
+              Unapply
+            </button>
           ) : (
-            <button className="btn-apply" onClick={() => handleApply(job._id)}>Apply Now <ArrowRight size={16} /></button>
+            <button className="btn-apply" onClick={() => handleApply(job._id)}>
+              Apply Now <ArrowRight size={16} />
+            </button>
           )}
         </div>
       </div>
@@ -338,31 +525,50 @@ const JobsPage = () => {
         <div className="jobs-max-width">
           <header className="jobs-hero">
             <div className="hero-content">
-              <h1>{mode === "public" ? "Explore Jobs" : mode === "recommended" ? "Jobs For You" : "Jobs Near You"}</h1>
+              <h1>
+                {mode === "public"
+                  ? "Explore Jobs"
+                  : mode === "recommended"
+                    ? "Jobs For You"
+                    : "Jobs Near You"}
+              </h1>
               <p>Verified opportunities updated daily.</p>
             </div>
             {isAuthenticated && currentUser?.profileCompleted && (
               <div className="hero-controls">
                 <button className="control-btn" onClick={handleToggleMode}>
-                  {jobViewMode === "recommended" ? <MapPin size={18} /> : <Star size={18} />}
+                  {jobViewMode === "recommended" ? (
+                    <MapPin size={18} />
+                  ) : (
+                    <Star size={18} />
+                  )}
                   {jobViewMode === "recommended" ? "Nearby" : "Recommended"}
                 </button>
                 {jobViewMode === "recommended" && (
-                  <button className="control-btn refresh" onClick={() => fetchJobs({ forceRefresh: true })}><RefreshCw size={18} />Refresh</button>
+                  <button
+                    className="control-btn refresh"
+                    onClick={() => fetchJobs({ forceRefresh: true })}
+                  >
+                    <RefreshCw size={18} />
+                    Refresh
+                  </button>
                 )}
               </div>
             )}
           </header>
 
           {mode === "recommended" && lastUpdated && (
-            <div className="update-toast"><History size={14} /> Last refreshed: {new Date(lastUpdated).toLocaleTimeString()}</div>
+            <div className="update-toast">
+              <History size={14} /> Last refreshed:{" "}
+              {new Date(lastUpdated).toLocaleTimeString()}
+            </div>
           )}
 
           <main className="jobs-feed">
             {loading && (
-              <div className="jobs-inline-loader" role="status" aria-live="polite">
-                <span className="inline-loader-dot" />
-                <span>Loading jobs...</span>
+              <div className="jobs-loading-screen">
+                <div className="spinner"></div>
+                <p>Loading...</p>
               </div>
             )}
 
@@ -374,19 +580,29 @@ const JobsPage = () => {
               <>
                 {recommendedJobs.length > 0 && (
                   <section className="feed-section">
-                    <h2 className="section-title"><Star size={20} className="icon-star" /> Recommendations</h2>
-                    <div className="modern-grid">{recommendedJobs.map(renderJobCard)}</div>
+                    <h2 className="section-title">
+                      <Star size={20} className="icon-star" /> Recommendations
+                    </h2>
+                    <div className="modern-grid">
+                      {recommendedJobs.map(renderJobCard)}
+                    </div>
                   </section>
                 )}
                 {otherJobs.length > 0 && (
                   <section className="feed-section alt-feed">
                     <h2 className="section-title">Similar Roles</h2>
-                    <div className="modern-grid">{otherJobs.map(renderJobCard)}</div>
+                    <div className="modern-grid">
+                      {otherJobs.map(renderJobCard)}
+                    </div>
                   </section>
                 )}
-                {!loading && recommendedJobs.length === 0 && otherJobs.length === 0 && (
-                  <div className="jobs-empty">No jobs found right now. Try refreshing in a moment.</div>
-                )}
+                {!loading &&
+                  recommendedJobs.length === 0 &&
+                  otherJobs.length === 0 && (
+                    <div className="jobs-empty">
+                      No jobs found right now. Try refreshing in a moment.
+                    </div>
+                  )}
               </>
             ) : (
               <>
@@ -400,9 +616,23 @@ const JobsPage = () => {
 
           {pages.length > 0 && (
             <footer className="pagination-bar">
-              <button className="pag-btn" onClick={handlePrevPage} disabled={pageIndex === 0}><ChevronLeft size={20} /> Prev</button>
+              <button
+                className="pag-btn"
+                onClick={handlePrevPage}
+                disabled={pageIndex === 0}
+              >
+                <ChevronLeft size={20} /> Prev
+              </button>
               <div className="pag-indicator">Page {pageIndex + 1}</div>
-              <button className="pag-btn" onClick={handleNextPage} disabled={loadingMore || (!hasMore && pageIndex === pages.length - 1)}>{loadingMore ? "..." : "Next"}</button>
+              <button
+                className="pag-btn"
+                onClick={handleNextPage}
+                disabled={
+                  loadingMore || (!hasMore && pageIndex === pages.length - 1)
+                }
+              >
+                {loadingMore ? "..." : "Next"}
+              </button>
             </footer>
           )}
         </div>
