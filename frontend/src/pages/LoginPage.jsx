@@ -10,14 +10,18 @@ import "./LoginPage.css";
 export default function LoginPage() {
   const { i18n } = useTranslation();
   const [formData, setFormData] = useState({
+    role: "seeker",
+    email: "",
+    otp: "",
     phone: "",
     password: "",
     rememberMe: false,
   });
   const [errors, setErrors] = useState({});
+  const [otpInfo, setOtpInfo] = useState("");
   const [notification, setNotification] = useState(null);
   const [language, setLanguage] = useState(i18n.language || "en");
-  const { isLoading, error, login, setError } = useAuth();
+  const { isLoading, error, login, sendEmailOtp, setError } = useAuth();
   const location = useLocation();
   
   // Load saved language preference
@@ -49,8 +53,17 @@ export default function LoginPage() {
     hi: {
       welcomeBack: "वापसी पर स्वागत है",
       enterCredentials: "कृपया अपनी लॉगिन जानकारी दर्ज करें",
+      roleLabel: "मैं हूँ",
+      roleSeeker: "नौकरी खोजने वाला",
+      roleGiver: "नौकरी देने वाला",
       phone: "फोन नंबर",
       enterPhone: "10 अंकों का फोन नंबर दर्ज करें",
+      email: "ईमेल",
+      enterEmail: "अपना ईमेल दर्ज करें",
+      otp: "OTP",
+      enterOtp: "6 अंकों का OTP दर्ज करें",
+      sendOtp: "OTP भेजें",
+      otpSent: "OTP आपके ईमेल पर भेजा गया है",
       pin: "PIN",
       enterPin: "अपना PIN दर्ज करें",
       rememberMe: "मुझे याद रखें",
@@ -62,6 +75,10 @@ export default function LoginPage() {
       signUp: "साइन अप",
       phoneRequired: "फोन नंबर आवश्यक है",
       phoneInvalid: "कृपया सही 10 अंकों का फोन नंबर डालें",
+      emailRequired: "ईमेल आवश्यक है",
+      invalidEmail: "ईमेल पता अमान्य है",
+      otpRequired: "OTP आवश्यक है",
+      otpInvalid: "कृपया सही 6 अंकों का OTP डालें",
       pinRequired: "PIN आवश्यक है",
       pinLength: "PIN कम से कम 4 अंकों का होना चाहिए",
       registrationSuccess: "पंजीकरण सफल! अब आप लॉग इन कर सकते हैं।",
@@ -69,8 +86,17 @@ export default function LoginPage() {
     mr: {
       welcomeBack: "पुन्हा स्वागत आहे",
       enterCredentials: "कृपया लॉगिन माहिती भरा",
+      roleLabel: "मी आहे",
+      roleSeeker: "नोकरी शोधणारा",
+      roleGiver: "नोकरी देणारा",
       phone: "फोन नंबर",
       enterPhone: "10 अंकी फोन नंबर भरा",
+      email: "ईमेल",
+      enterEmail: "आपला ईमेल भरा",
+      otp: "OTP",
+      enterOtp: "6 अंकी OTP भरा",
+      sendOtp: "OTP पाठवा",
+      otpSent: "OTP आपल्या ईमेलवर पाठवला आहे",
       pin: "PIN",
       enterPin: "आपला PIN भरा",
       rememberMe: "मला लक्षात ठेवा",
@@ -82,6 +108,10 @@ export default function LoginPage() {
       signUp: "साइन अप",
       phoneRequired: "फोन नंबर आवश्यक आहे",
       phoneInvalid: "कृपया योग्य 10 अंकी फोन नंबर टाका",
+      emailRequired: "ईमेल आवश्यक आहे",
+      invalidEmail: "ईमेल पत्ता अवैध आहे",
+      otpRequired: "OTP आवश्यक आहे",
+      otpInvalid: "कृपया योग्य 6 अंकी OTP टाका",
       pinRequired: "PIN आवश्यक आहे",
       pinLength: "PIN किमान 4 अंकांचा असावा",
       registrationSuccess: "नोंदणी यशस्वी! आता आपण लॉगिन करू शकता.",
@@ -89,8 +119,17 @@ export default function LoginPage() {
     en: {
       welcomeBack: "Welcome Back",
       enterCredentials: "Please enter your credentials to login",
+      roleLabel: "I am a",
+      roleSeeker: "Job seeker",
+      roleGiver: "Job giver",
       phone: "Phone Number",
       enterPhone: "Enter 10-digit phone number",
+      email: "Email",
+      enterEmail: "Enter your email",
+      otp: "OTP",
+      enterOtp: "Enter 6-digit OTP",
+      sendOtp: "Send OTP",
+      otpSent: "OTP has been sent to your email",
       pin: "PIN",
       enterPin: "Enter your PIN",
       rememberMe: "Remember me",
@@ -102,6 +141,10 @@ export default function LoginPage() {
       signUp: "Sign Up",
       phoneRequired: "Phone number is required",
       phoneInvalid: "Please enter a valid 10-digit phone number",
+      emailRequired: "Email is required",
+      invalidEmail: "Email address is invalid",
+      otpRequired: "OTP is required",
+      otpInvalid: "Please enter a valid 6-digit OTP",
       pinRequired: "PIN is required",
       pinLength: "PIN must be at least 4 digits",
       registrationSuccess: "Registration successful! You can now log in.",
@@ -124,6 +167,9 @@ export default function LoginPage() {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (name === "email" || name === "role") {
+      setOtpInfo("");
+    }
     setFormData({
       ...formData,
       [name]: type === "checkbox" ? checked : value,
@@ -149,23 +195,55 @@ export default function LoginPage() {
 
   const validateForm = () => {
     const newErrors = {};
-    
-    const digits = (formData.phone || "").replace(/\D/g, "");
-    const normalized = digits.length > 10 ? digits.slice(-10) : digits;
-    if (!normalized) {
-      newErrors.phone = content[language].phoneRequired;
-    } else if (normalized.length !== 10) {
-      newErrors.phone = content[language].phoneInvalid;
-    }
-    
-    if (!formData.password) {
-      newErrors.password = content[language].pinRequired;
-    } else if (formData.password.length < 4) {
-      newErrors.password = content[language].pinLength;
+
+    if (formData.role === "giver") {
+      if (!formData.email) {
+        newErrors.email = content[language].emailRequired;
+      } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+        newErrors.email = content[language].invalidEmail;
+      }
+
+      if (!formData.otp) {
+        newErrors.otp = content[language].otpRequired;
+      } else if (!/^\d{6}$/.test(formData.otp)) {
+        newErrors.otp = content[language].otpInvalid;
+      }
+    } else {
+      const digits = (formData.phone || "").replace(/\D/g, "");
+      const normalized = digits.length > 10 ? digits.slice(-10) : digits;
+      if (!normalized) {
+        newErrors.phone = content[language].phoneRequired;
+      } else if (normalized.length !== 10) {
+        newErrors.phone = content[language].phoneInvalid;
+      }
+
+      if (!formData.password) {
+        newErrors.password = content[language].pinRequired;
+      } else if (formData.password.length < 4) {
+        newErrors.password = content[language].pinLength;
+      }
     }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSendOtp = async () => {
+    const email = String(formData.email || "").trim();
+    if (!email) {
+      setErrors((prev) => ({ ...prev, email: content[language].emailRequired }));
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setErrors((prev) => ({ ...prev, email: content[language].invalidEmail }));
+      return;
+    }
+
+    const result = await sendEmailOtp({ email, purpose: "login" });
+    if (result.success) {
+      setOtpInfo(content[language].otpSent);
+      setErrors((prev) => ({ ...prev, email: "", otp: "" }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -176,11 +254,21 @@ export default function LoginPage() {
     }
     
     // Use the login function from our custom hook
-    login({
-      phone: formData.phone,
-      password: formData.password,
-      rememberMe: formData.rememberMe
-    });
+    login(
+      formData.role === "giver"
+        ? {
+            role: "giver",
+            email: formData.email,
+            otp: formData.otp,
+            rememberMe: formData.rememberMe,
+          }
+        : {
+            role: "seeker",
+            phone: formData.phone,
+            password: formData.password,
+            rememberMe: formData.rememberMe,
+          }
+    );
   };
 
   return (
@@ -200,6 +288,30 @@ export default function LoginPage() {
             <h1 className="login-title">{content[language].welcomeBack}</h1>
             <p className="login-subtitle">{content[language].enterCredentials}</p>
           </div>
+
+          <div className="language-buttons" style={{ marginBottom: 10 }}>
+            <button
+              type="button"
+              className={language === "en" ? "active" : ""}
+              onClick={() => handleLanguageChange("en")}
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              className={language === "hi" ? "active" : ""}
+              onClick={() => handleLanguageChange("hi")}
+            >
+              HI
+            </button>
+            <button
+              type="button"
+              className={language === "mr" ? "active" : ""}
+              onClick={() => handleLanguageChange("mr")}
+            >
+              MR
+            </button>
+          </div>
           
           {errors.general && (
             <div className="alert alert-danger" role="alert">
@@ -209,42 +321,120 @@ export default function LoginPage() {
           
           <form onSubmit={handleSubmit} noValidate>
             <div className="form-group">
-              <label htmlFor="phone" className="form-label">
-                {content[language].phone}
-              </label>
-              <input
-                name="phone"
-                id="phone"
-                type="text"
-                placeholder={content[language].enterPhone}
-                className={`form-control ${errors.phone ? "is-invalid" : ""}`}
-                value={formData.phone}
-                onChange={handleChange}
-                required
-              />
-              {errors.phone && (
-                <span className="error-message">{errors.phone}</span>
-              )}
+              <label className="form-label">{content[language].roleLabel}</label>
+              <div className="role-selection-wrapper">
+                <button
+                  type="button"
+                  className={`role-option-btn ${formData.role === "seeker" ? "active" : ""}`}
+                  onClick={() =>
+                    handleChange({ target: { name: "role", value: "seeker" } })
+                  }
+                >
+                  {content[language].roleSeeker}
+                </button>
+                <button
+                  type="button"
+                  className={`role-option-btn ${formData.role === "giver" ? "active" : ""}`}
+                  onClick={() =>
+                    handleChange({ target: { name: "role", value: "giver" } })
+                  }
+                >
+                  {content[language].roleGiver}
+                </button>
+              </div>
             </div>
-            
-            <div className="form-group">
-              <label htmlFor="password" className="form-label">
-                {content[language].pin}
-              </label>
-              <input
-                name="password"
-                id="password"
-                type="password"
-                placeholder={content[language].enterPin}
-                className={`form-control ${errors.password ? "is-invalid" : ""}`}
-                value={formData.password}
-                onChange={handleChange}
-                required
-              />
-              {errors.password && (
-                <span className="error-message">{errors.password}</span>
-              )}
-            </div>
+
+            {formData.role === "giver" ? (
+              <>
+                <div className="form-group">
+                  <label htmlFor="email" className="form-label">
+                    {content[language].email}
+                  </label>
+                  <input
+                    name="email"
+                    id="email"
+                    type="email"
+                    placeholder={content[language].enterEmail}
+                    className={`form-control ${errors.email ? "is-invalid" : ""}`}
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                  />
+                  {errors.email && <span className="error-message">{errors.email}</span>}
+                </div>
+
+                <div className="form-group otp-send-group">
+                  <button
+                    type="button"
+                    className="btn-send-otp"
+                    onClick={handleSendOtp}
+                    disabled={isLoading}
+                  >
+                    {content[language].sendOtp}
+                  </button>
+                  {otpInfo && <span className="otp-info-message">{otpInfo}</span>}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="otp" className="form-label">
+                    {content[language].otp}
+                  </label>
+                  <input
+                    name="otp"
+                    id="otp"
+                    type="text"
+                    maxLength={6}
+                    inputMode="numeric"
+                    placeholder={content[language].enterOtp}
+                    className={`form-control ${errors.otp ? "is-invalid" : ""}`}
+                    value={formData.otp}
+                    onChange={handleChange}
+                    required
+                  />
+                  {errors.otp && <span className="error-message">{errors.otp}</span>}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="form-group">
+                  <label htmlFor="phone" className="form-label">
+                    {content[language].phone}
+                  </label>
+                  <input
+                    name="phone"
+                    id="phone"
+                    type="text"
+                    placeholder={content[language].enterPhone}
+                    className={`form-control ${errors.phone ? "is-invalid" : ""}`}
+                    value={formData.phone}
+                    onChange={handleChange}
+                    required
+                  />
+                  {errors.phone && (
+                    <span className="error-message">{errors.phone}</span>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="password" className="form-label">
+                    {content[language].pin}
+                  </label>
+                  <input
+                    name="password"
+                    id="password"
+                    type="password"
+                    placeholder={content[language].enterPin}
+                    className={`form-control ${errors.password ? "is-invalid" : ""}`}
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                  />
+                  {errors.password && (
+                    <span className="error-message">{errors.password}</span>
+                  )}
+                </div>
+              </>
+            )}
             
             <div className="remember-forgot">
               <div className="remember-me">

@@ -27,7 +27,7 @@ KaamKhojAI is a voice-first employment platform designed to bridge the gap betwe
 - **Multilingual Support**: English, Hindi, and Marathi with real-time language switching
 - **AI-Powered Assistance**: Conversational profile building using Meta Llama 3.3 70B
 - **Smart Job Matching**: Rule-based recommendation engine with staged matching logic
-- **Dual Authentication**: OTP-based for workers (Twilio), traditional email/password for contractors
+- **Role-based Authentication**: Phone + PIN for workers, Email + OTP for contractors
 - **Contractor Dashboard**: SaaS-style interface with job management and application tracking
 - **Dynamic Translation**: Real-time job content translation in EN/HI/MR using i18next
 - **Application Management**: Track and manage job applications with status updates
@@ -156,6 +156,17 @@ JWT_SECRET=your_jwt_secret_key_here
 PORT=5000
 OPENROUTER_API_KEY=your_openrouter_api_key_here
 NODE_ENV=development
+
+# Email OTP (free SMTP providers like Brevo, Gmail App Password)
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_smtp_username
+SMTP_PASS=your_smtp_password
+SMTP_FROM_EMAIL=no-reply@yourdomain.com
+SMTP_FROM_NAME=KaamKhoj
+OTP_HASH_SECRET=change_this_for_production
+APP_NAME=KaamKhoj
 ```
 
 ## Usage
@@ -178,7 +189,7 @@ NODE_ENV=development
 
 ### For Contractors
 
-1. **Register/Login**: Create a contractor account
+1. **Register/Login**: Create a contractor account with email OTP verification
 2. **Post Jobs**: Fill out the job posting form with:
    - Job title
    - Description

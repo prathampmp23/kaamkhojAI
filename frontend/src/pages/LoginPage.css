@@ -9,6 +9,7 @@
   justify-content: center;
   align-items: center; /* Centered for a more balanced modern look */
   padding: 20px;
+  margin-top: 40px;
   font-family: 'Inter', -apple-system, sans-serif;
 }
 
@@ -53,6 +54,35 @@
 .login-subtitle {
   font-size: 15px;
   color: #718096;
+}
+
+.language-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 12px;
+  margin-bottom: 25px;
+}
+
+.language-buttons button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.language-buttons button.active {
+  background: white;
+  color: #2552fe;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .form-group {
@@ -160,6 +190,70 @@
   font-size: 12px;
   font-weight: 500;
   margin-top: 6px;
+}
+
+.role-selection-wrapper {
+  display: flex;
+  background-color: #f1f5f9;
+  padding: 6px;
+  border-radius: 14px;
+  gap: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.role-option-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  transition: all 0.25s ease;
+}
+
+.role-option-btn.active {
+  background-color: #ffffff;
+  color: #2552fe;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.otp-send-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-send-otp {
+  height: 44px;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #2552fe;
+  background: #eff4ff;
+  color: #2552fe;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-send-otp:hover:not(:disabled) {
+  background: #dbe7ff;
+}
+
+.btn-send-otp:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.otp-info-message {
+  color: #2f855a;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 /* Custom Alert Styling */

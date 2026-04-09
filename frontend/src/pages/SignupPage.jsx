@@ -12,13 +12,14 @@ export default function SignupPage() {
     phone: "",
     email: "",
     password: "",
-    confirmPassword: "",
+    otp: "",
     role: "seeker",
     agreeTerms: false,
   });
   const [errors, setErrors] = useState({});
+  const [otpInfo, setOtpInfo] = useState("");
   const [language, setLanguage] = useState(i18n.language || "en");
-  const { isLoading, error, register, setError } = useAuth();
+  const { isLoading, error, register, sendEmailOtp, setError } = useAuth();
 
   // Load saved language preference
   useEffect(() => {
@@ -44,8 +45,14 @@ export default function SignupPage() {
       roleGiver: "नौकरी देने वाला",
       phone: "फोन नंबर",
       enterPhone: "10 अंकों का फोन नंबर दर्ज करें",
-      email: "ईमेल (वैकल्पिक)",
-      enterEmail: "अपना ईमेल दर्ज करें (वैकल्पिक)",
+      email: "ईमेल",
+      emailOptional: "ईमेल (वैकल्पिक)",
+      enterEmail: "अपना ईमेल दर्ज करें",
+      enterEmailOptional: "अपना ईमेल दर्ज करें (वैकल्पिक)",
+      otp: "OTP",
+      enterOtp: "6 अंकों का OTP दर्ज करें",
+      sendOtp: "OTP भेजें",
+      otpSent: "OTP आपके ईमेल पर भेजा गया है",
       pin: "PIN",
       createPin: "4 अंकों का PIN बनाएँ",
       confirmPin: "PIN की पुष्टि करें",
@@ -60,6 +67,9 @@ export default function SignupPage() {
       phoneRequired: "फोन नंबर आवश्यक है",
       phoneInvalid: "कृपया सही 10 अंकों का फोन नंबर डालें",
       invalidEmail: "ईमेल पता अमान्य है",
+      emailRequiredForGiver: "नौकरी देने वाले के लिए ईमेल आवश्यक है",
+      otpRequired: "OTP आवश्यक है",
+      otpInvalid: "कृपया सही 6 अंकों का OTP डालें",
       pinRequired: "PIN आवश्यक है",
       pinLength: "PIN कम से कम 4 अंकों का होना चाहिए",
       pinsDoNotMatch: "PIN मेल नहीं खाते",
@@ -73,8 +83,14 @@ export default function SignupPage() {
       roleGiver: "नोकरी देणारा",
       phone: "फोन नंबर",
       enterPhone: "10 अंकी फोन नंबर भरा",
-      email: "ईमेल (ऐच्छिक)",
-      enterEmail: "आपला ईमेल भरा (ऐच्छिक)",
+      email: "ईमेल",
+      emailOptional: "ईमेल (ऐच्छिक)",
+      enterEmail: "आपला ईमेल भरा",
+      enterEmailOptional: "आपला ईमेल भरा (ऐच्छिक)",
+      otp: "OTP",
+      enterOtp: "6 अंकी OTP भरा",
+      sendOtp: "OTP पाठवा",
+      otpSent: "OTP आपल्या ईमेलवर पाठवला आहे",
       pin: "PIN",
       createPin: "4 अंकी PIN तयार करा",
       confirmPin: "PIN ची पुष्टी करा",
@@ -89,6 +105,9 @@ export default function SignupPage() {
       phoneRequired: "फोन नंबर आवश्यक आहे",
       phoneInvalid: "कृपया योग्य 10 अंकी फोन नंबर टाका",
       invalidEmail: "ईमेल पत्ता अवैध आहे",
+      emailRequiredForGiver: "नोकरी देणाऱ्यासाठी ईमेल आवश्यक आहे",
+      otpRequired: "OTP आवश्यक आहे",
+      otpInvalid: "कृपया योग्य 6 अंकी OTP टाका",
       pinRequired: "PIN आवश्यक आहे",
       pinLength: "PIN किमान 4 अंकांचा असावा",
       pinsDoNotMatch: "PIN जुळत नाहीत",
@@ -102,8 +121,14 @@ export default function SignupPage() {
       roleGiver: "Job giver",
       phone: "Phone Number",
       enterPhone: "Enter 10-digit phone number",
-      email: "Email (optional)",
-      enterEmail: "Enter your email (optional)",
+      email: "Email",
+      emailOptional: "Email (optional)",
+      enterEmail: "Enter your email",
+      enterEmailOptional: "Enter your email (optional)",
+      otp: "OTP",
+      enterOtp: "Enter 6-digit OTP",
+      sendOtp: "Send OTP",
+      otpSent: "OTP has been sent to your email",
       pin: "PIN",
       createPin: "Create a 4-digit PIN",
       confirmPin: "Confirm PIN",
@@ -118,6 +143,9 @@ export default function SignupPage() {
       phoneRequired: "Phone number is required",
       phoneInvalid: "Please enter a valid 10-digit phone number",
       invalidEmail: "Email address is invalid",
+      emailRequiredForGiver: "Email is required for job giver",
+      otpRequired: "OTP is required",
+      otpInvalid: "Please enter a valid 6-digit OTP",
       pinRequired: "PIN is required",
       pinLength: "PIN must be at least 4 digits",
       pinsDoNotMatch: "PINs do not match",
@@ -143,6 +171,9 @@ export default function SignupPage() {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (name === "email" || name === "role") {
+      setOtpInfo("");
+    }
     setFormData({
       ...formData,
       [name]: type === "checkbox" ? checked : value,
@@ -168,6 +199,7 @@ export default function SignupPage() {
 
   const validateForm = () => {
     const newErrors = {};
+    const isJobGiver = formData.role === "giver";
 
     const digits = (formData.phone || "").replace(/\D/g, "");
     const normalized = digits.length > 10 ? digits.slice(-10) : digits;
@@ -177,21 +209,25 @@ export default function SignupPage() {
       newErrors.phone = content[language].phoneInvalid;
     }
 
-    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
+    if (isJobGiver && !formData.email) {
+      newErrors.email = content[language].emailRequiredForGiver;
+    } else if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = content[language].invalidEmail;
     }
 
-    if (!formData.password) {
-      newErrors.password = content[language].pinRequired;
-    } else if (formData.password.length < 4) {
-      newErrors.password = content[language].pinLength;
-    }
-
-    if (
-      formData.confirmPassword &&
-      formData.password !== formData.confirmPassword
-    ) {
-      newErrors.confirmPassword = content[language].pinsDoNotMatch;
+    if (isJobGiver) {
+      const otp = String(formData.otp || "").trim();
+      if (!otp) {
+        newErrors.otp = content[language].otpRequired;
+      } else if (!/^\d{6}$/.test(otp)) {
+        newErrors.otp = content[language].otpInvalid;
+      }
+    } else {
+      if (!formData.password) {
+        newErrors.password = content[language].pinRequired;
+      } else if (formData.password.length < 4) {
+        newErrors.password = content[language].pinLength;
+      }
     }
 
     if (!formData.agreeTerms) {
@@ -200,6 +236,31 @@ export default function SignupPage() {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSendOtp = async () => {
+    const email = String(formData.email || "").trim();
+    if (!email) {
+      setErrors((prev) => ({
+        ...prev,
+        email: content[language].emailRequiredForGiver,
+      }));
+      return;
+    }
+
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setErrors((prev) => ({
+        ...prev,
+        email: content[language].invalidEmail,
+      }));
+      return;
+    }
+
+    const result = await sendEmailOtp({ email, purpose: "signup" });
+    if (result.success) {
+      setOtpInfo(content[language].otpSent);
+      setErrors((prev) => ({ ...prev, email: "", otp: "" }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -212,8 +273,10 @@ export default function SignupPage() {
     // Use the register function from our custom hook
     register({
       phone: formData.phone,
-      email: formData.email || undefined,
-      password: formData.password,
+      email:
+        formData.role === "giver" ? formData.email || undefined : undefined,
+      password: formData.role === "seeker" ? formData.password : undefined,
+      otp: formData.role === "giver" ? formData.otp : undefined,
       role: formData.role,
     });
   };
@@ -263,42 +326,7 @@ export default function SignupPage() {
           )}
 
           <form onSubmit={handleSubmit} noValidate>
-            <div className="form-group">
-              <label htmlFor="phone" className="form-label">
-                {content[language].phone}
-              </label>
-              <input
-                name="phone"
-                id="phone"
-                type="text"
-                placeholder={content[language].enterPhone}
-                className={`form-control ${errors.phone ? "is-invalid" : ""}`}
-                value={formData.phone}
-                onChange={handleChange}
-                required
-              />
-              {errors.phone && (
-                <span className="error-message">{errors.phone}</span>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="email" className="form-label">
-                {content[language].email}
-              </label>
-              <input
-                name="email"
-                id="email"
-                type="email"
-                placeholder={content[language].enterEmail}
-                className={`form-control ${errors.email ? "is-invalid" : ""}`}
-                value={formData.email}
-                onChange={handleChange}
-              />
-              {errors.email && (
-                <span className="error-message">{errors.email}</span>
-              )}
-            </div>
+            
 
             <div className="form-group">
               <label className="form-label">
@@ -324,47 +352,102 @@ export default function SignupPage() {
                   {content[language].roleGiver}
                 </button>
               </div>
-              {/* Hidden input to ensure form compatibility if needed */}
               <input type="hidden" name="role" value={formData.role} />
             </div>
 
             <div className="form-group">
-              <label htmlFor="password" className="form-label">
-                {content[language].pin}
+              <label htmlFor="phone" className="form-label">
+                {content[language].phone}
               </label>
               <input
-                name="password"
-                id="password"
-                type="password"
-                placeholder={content[language].createPin}
-                className={`form-control ${errors.password ? "is-invalid" : ""}`}
-                value={formData.password}
+                name="phone"
+                id="phone"
+                type="text"
+                placeholder={content[language].enterPhone}
+                className={`form-control ${errors.phone ? "is-invalid" : ""}`}
+                value={formData.phone}
                 onChange={handleChange}
                 required
               />
-              {errors.password && (
-                <span className="error-message">{errors.password}</span>
+              {errors.phone && (
+                <span className="error-message">{errors.phone}</span>
               )}
             </div>
 
-            {/* <div className="form-group">
-              <label htmlFor="confirmPassword" className="form-label">
-                {content[language].confirmPassword}
-              </label>
-              <input
-                name="confirmPassword"
-                id="confirmPassword"
-                type="password"
-                placeholder={content[language].confirmYourPassword}
-                className={`form-control ${errors.confirmPassword ? "is-invalid" : ""}`}
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-              />
-              {errors.confirmPassword && (
-                <span className="error-message">{errors.confirmPassword}</span>
-              )}
-            </div> */}
+            {formData.role === "giver" && (
+              <div className="form-group">
+                <label htmlFor="email" className="form-label">
+                  {content[language].email}
+                </label>
+                <input
+                  name="email"
+                  id="email"
+                  type="email"
+                  placeholder={content[language].enterEmail}
+                  className={`form-control ${errors.email ? "is-invalid" : ""}`}
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                />
+                {errors.email && (
+                  <span className="error-message">{errors.email}</span>
+                )}
+              </div>
+            )}
+
+            {formData.role === "seeker" ? (
+              <div className="form-group">
+                <label htmlFor="password" className="form-label">
+                  {content[language].pin}
+                </label>
+                <input
+                  name="password"
+                  id="password"
+                  type="password"
+                  placeholder={content[language].createPin}
+                  className={`form-control ${errors.password ? "is-invalid" : ""}`}
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                />
+                {errors.password && (
+                  <span className="error-message">{errors.password}</span>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="form-group otp-send-group">
+                  <button
+                    type="button"
+                    className="btn-send-otp"
+                    onClick={handleSendOtp}
+                    disabled={isLoading}
+                  >
+                    {content[language].sendOtp}
+                  </button>
+                  {otpInfo && <span className="otp-info-message">{otpInfo}</span>}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="otp" className="form-label">
+                    {content[language].otp}
+                  </label>
+                  <input
+                    name="otp"
+                    id="otp"
+                    type="text"
+                    maxLength={6}
+                    inputMode="numeric"
+                    placeholder={content[language].enterOtp}
+                    className={`form-control ${errors.otp ? "is-invalid" : ""}`}
+                    value={formData.otp}
+                    onChange={handleChange}
+                    required
+                  />
+                  {errors.otp && <span className="error-message">{errors.otp}</span>}
+                </div>
+              </>
+            )}
 
             <div
               className={`terms-checkbox ${errors.agreeTerms ? "is-invalid" : ""}`}

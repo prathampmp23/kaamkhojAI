@@ -7,6 +7,7 @@ const authMiddleware = require('../middleware/auth');
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.post('/check-phone', authController.checkPhone);
+router.post('/send-email-otp', authController.sendEmailOtp);
 
 // Protected routes
 router.get('/me', authMiddleware, authController.getCurrentUser);

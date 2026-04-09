@@ -21,6 +21,7 @@ import "./JobsPage.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://kaamkhojaibackend.onrender.com";
 const PAGE_SIZE = 9;
+const LOCATION_TIMEOUT_MS = 2500;
 
 const JobsPage = () => {
   const { i18n } = useTranslation();
@@ -109,7 +110,15 @@ const JobsPage = () => {
   const getCurrentPosition = () => {
     return new Promise((resolve) => {
       if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition((pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }), () => resolve(null));
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+          () => resolve(null),
+          {
+            enableHighAccuracy: false,
+            timeout: LOCATION_TIMEOUT_MS,
+            maximumAge: 5 * 60 * 1000,
+          }
+        );
       } else resolve(null);
     });
   };
@@ -141,7 +150,37 @@ const JobsPage = () => {
         const hasProfile = currentUser?.profileCompleted === true;
         if (hasProfile && jobViewMode === "recommended") {
           response = await axios.get(`${API_URL}/api/jobs/recommended`, { headers: { Authorization: `Bearer ${token}` }, params: { forceRefresh, limit: PAGE_SIZE, exclude: excludeParam } });
-          const page = { mode: "recommended", allJobs: [], recommendedJobs: response.data.recommendedJobs || [], otherJobs: response.data.otherJobs || [], hasMore: Boolean(response.data.hasMore), lastUpdated: response.data.lastUpdated };
+          const recommended = response.data.recommendedJobs || [];
+          const other = response.data.otherJobs || [];
+
+          if (recommended.length === 0 && other.length === 0) {
+            const position = await getCurrentPosition();
+            const fallbackResp = await axios.get(`${API_URL}/api/jobs/public`, {
+              headers: { Authorization: `Bearer ${token}` },
+              params: {
+                lat: position?.latitude,
+                lon: position?.longitude,
+                limit: PAGE_SIZE,
+                exclude: excludeParam,
+              },
+            });
+            const fallbackPage = {
+              mode: "public",
+              allJobs: fallbackResp.data.jobs || [],
+              recommendedJobs: [],
+              otherJobs: [],
+              hasMore: Boolean(fallbackResp.data.hasMore),
+            };
+            setPages((prev) => (nextPage ? [...prev, fallbackPage] : [fallbackPage]));
+            setAllJobs(fallbackPage.allJobs);
+            setRecommendedJobs([]);
+            setOtherJobs([]);
+            setMode("public");
+            setHasMore(fallbackPage.hasMore);
+            return fallbackPage;
+          }
+
+          const page = { mode: "recommended", allJobs: [], recommendedJobs: recommended, otherJobs: other, hasMore: Boolean(response.data.hasMore), lastUpdated: response.data.lastUpdated };
           setPages((prev) => (nextPage ? [...prev, page] : [page]));
           setRecommendedJobs(page.recommendedJobs); setOtherJobs(page.otherJobs); setLastUpdated(response.data.lastUpdated); setMode("recommended"); setHasMore(page.hasMore);
           return page;
@@ -149,7 +188,34 @@ const JobsPage = () => {
           const endpoint = (hasProfile && jobViewMode === "nearby") ? `${API_URL}/api/jobs/nearby` : `${API_URL}/api/jobs/public`;
           const position = (hasProfile && jobViewMode === "nearby") ? null : await getCurrentPosition();
           response = await axios.get(endpoint, { headers: { Authorization: `Bearer ${token}` }, params: { lat: position?.latitude, lon: position?.longitude, limit: PAGE_SIZE, exclude: excludeParam } });
-          const page = { mode: jobViewMode || "public", allJobs: response.data.jobs || [], recommendedJobs: [], otherJobs: [], hasMore: Boolean(response.data.hasMore) };
+
+          const nearbyOrPublicJobs = response.data.jobs || [];
+          if (hasProfile && jobViewMode === "nearby" && nearbyOrPublicJobs.length === 0) {
+            const fallbackPosition = await getCurrentPosition();
+            const fallbackResp = await axios.get(`${API_URL}/api/jobs/public`, {
+              headers: { Authorization: `Bearer ${token}` },
+              params: {
+                lat: fallbackPosition?.latitude,
+                lon: fallbackPosition?.longitude,
+                limit: PAGE_SIZE,
+                exclude: excludeParam,
+              },
+            });
+            const fallbackPage = {
+              mode: "public",
+              allJobs: fallbackResp.data.jobs || [],
+              recommendedJobs: [],
+              otherJobs: [],
+              hasMore: Boolean(fallbackResp.data.hasMore),
+            };
+            setPages((prev) => (nextPage ? [...prev, fallbackPage] : [fallbackPage]));
+            setAllJobs(fallbackPage.allJobs);
+            setMode("public");
+            setHasMore(fallbackPage.hasMore);
+            return fallbackPage;
+          }
+
+          const page = { mode: jobViewMode || "public", allJobs: nearbyOrPublicJobs, recommendedJobs: [], otherJobs: [], hasMore: Boolean(response.data.hasMore) };
           setPages((prev) => (nextPage ? [...prev, page] : [page]));
           setAllJobs(page.allJobs); setMode(page.mode); setHasMore(page.hasMore);
           return page;
@@ -293,6 +359,17 @@ const JobsPage = () => {
           )}
 
           <main className="jobs-feed">
+            {loading && (
+              <div className="jobs-inline-loader" role="status" aria-live="polite">
+                <span className="inline-loader-dot" />
+                <span>Loading jobs...</span>
+              </div>
+            )}
+
+            {!loading && error && (
+              <div className="jobs-inline-error">{error}</div>
+            )}
+
             {mode === "recommended" ? (
               <>
                 {recommendedJobs.length > 0 && (
@@ -307,9 +384,17 @@ const JobsPage = () => {
                     <div className="modern-grid">{otherJobs.map(renderJobCard)}</div>
                   </section>
                 )}
+                {!loading && recommendedJobs.length === 0 && otherJobs.length === 0 && (
+                  <div className="jobs-empty">No jobs found right now. Try refreshing in a moment.</div>
+                )}
               </>
             ) : (
-              <div className="modern-grid">{allJobs.map(renderJobCard)}</div>
+              <>
+                <div className="modern-grid">{allJobs.map(renderJobCard)}</div>
+                {!loading && allJobs.length === 0 && (
+                  <div className="jobs-empty">No jobs available right now.</div>
+                )}
+              </>
             )}
           </main>
 

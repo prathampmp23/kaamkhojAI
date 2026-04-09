@@ -1,7 +1,64 @@
 const AuthUser = require("../models/authUser");
 const User = require("../models/user");
 const Job = require("../models/job");
+const EmailOtp = require("../models/emailOtp");
 const { generateToken } = require("../utils/jwt");
+const crypto = require("crypto");
+const { sendOtpEmail } = require("../services/emailService");
+
+const OTP_EXPIRY_MINUTES = 10;
+const OTP_LENGTH = 6;
+
+const normalizeEmail = (value) => {
+  if (!value) return null;
+  return String(value).trim().toLowerCase();
+};
+
+const isValidEmail = (value) => {
+  return /^\S+@\S+\.\S+$/.test(String(value || ""));
+};
+
+const generateOtpCode = () => {
+  const min = Math.pow(10, OTP_LENGTH - 1);
+  const max = Math.pow(10, OTP_LENGTH) - 1;
+  return String(Math.floor(Math.random() * (max - min + 1)) + min);
+};
+
+const hashOtp = (email, purpose, otp) => {
+  const salt = process.env.OTP_HASH_SECRET || "otp-secret";
+  return crypto
+    .createHash("sha256")
+    .update(`${email}:${purpose}:${otp}:${salt}`)
+    .digest("hex");
+};
+
+const verifyAndConsumeOtp = async ({ email, purpose, otp }) => {
+  const now = new Date();
+  const record = await EmailOtp.findOne({ email, purpose });
+  if (!record) {
+    return { ok: false, message: "OTP not found. Please request a new OTP." };
+  }
+
+  if (record.expiresAt < now) {
+    await EmailOtp.deleteOne({ _id: record._id });
+    return { ok: false, message: "OTP expired. Please request a new OTP." };
+  }
+
+  if (record.attempts >= record.maxAttempts) {
+    await EmailOtp.deleteOne({ _id: record._id });
+    return { ok: false, message: "Too many invalid attempts. Request OTP again." };
+  }
+
+  const incomingHash = hashOtp(email, purpose, otp);
+  if (incomingHash !== record.codeHash) {
+    record.attempts += 1;
+    await record.save();
+    return { ok: false, message: "Invalid OTP." };
+  }
+
+  await EmailOtp.deleteOne({ _id: record._id });
+  return { ok: true };
+};
 
 const normalizePhone = (value) => {
   if (!value) return null;
@@ -111,24 +168,130 @@ const checkPhone = async (req, res) => {
   }
 };
 
+const sendEmailOtp = async (req, res) => {
+  try {
+    const purpose = String(req.body?.purpose || "").trim().toLowerCase();
+    const email = normalizeEmail(req.body?.email);
+
+    if (!email || !isValidEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid email address",
+      });
+    }
+
+    if (!["signup", "login"].includes(purpose)) {
+      return res.status(400).json({
+        success: false,
+        message: "Purpose must be signup or login",
+      });
+    }
+
+    const existingEmailUser = await AuthUser.findOne({ email });
+    if (purpose === "signup" && existingEmailUser) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is already registered. Please login.",
+      });
+    }
+
+    if (purpose === "login") {
+      if (!existingEmailUser || existingEmailUser.role !== "giver") {
+        return res.status(404).json({
+          success: false,
+          message: "No job giver account found for this email",
+        });
+      }
+    }
+
+    const otp = generateOtpCode();
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+    const codeHash = hashOtp(email, purpose, otp);
+
+    await EmailOtp.findOneAndUpdate(
+      { email, purpose },
+      {
+        email,
+        purpose,
+        codeHash,
+        expiresAt,
+        attempts: 0,
+        maxAttempts: 5,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    const mailResult = await sendOtpEmail({ toEmail: email, otp, purpose });
+
+    if (!mailResult.delivered) {
+      return res.status(503).json({
+        success: false,
+        message:
+          "Email service is not configured on server. Please set SMTP env variables.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP sent successfully",
+    });
+  } catch (error) {
+    console.error("Send email OTP error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while sending OTP",
+      error: error.message,
+    });
+  }
+};
+
 // Register a new user
 const register = async (req, res) => {
   try {
-    const { username, email, password, role, phone: phoneRaw } = req.body;
+    const { username, email, password, role, phone: phoneRaw, otp } = req.body;
     const normalizedRole = normalizeRole(role) || 'seeker';
+    const normalizedEmail = normalizeEmail(email);
 
     const phone = normalizePhone(phoneRaw);
     const hasPhone = !!phone;
 
     // Validation
-    if (!password) {
+    if (normalizedRole === "seeker" && !password) {
       return res.status(400).json({
         success: false,
         message: "Please provide a password/PIN",
       });
     }
 
-    if (!hasPhone && !username && !email) {
+    if (normalizedRole === "giver") {
+      if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide a valid email address",
+        });
+      }
+
+      if (!otp) {
+        return res.status(400).json({
+          success: false,
+          message: "OTP is required for job giver signup",
+        });
+      }
+
+      const otpCheck = await verifyAndConsumeOtp({
+        email: normalizedEmail,
+        purpose: "signup",
+        otp,
+      });
+      if (!otpCheck.ok) {
+        return res.status(400).json({
+          success: false,
+          message: otpCheck.message,
+        });
+      }
+    }
+
+    if (!hasPhone && !username && !normalizedEmail) {
       return res.status(400).json({
         success: false,
         message: "Please provide phone number (recommended) or username/email",
@@ -170,8 +333,8 @@ const register = async (req, res) => {
     }
 
     // Check if email already exists
-    if (email) {
-      const existingEmail = await AuthUser.findOne({ email });
+    if (normalizedEmail) {
+      const existingEmail = await AuthUser.findOne({ email: normalizedEmail });
       if (existingEmail) {
         return res.status(400).json({
           success: false,
@@ -180,12 +343,17 @@ const register = async (req, res) => {
       }
     }
 
+    const finalPassword =
+      normalizedRole === "giver"
+        ? `OTP_${crypto.randomBytes(24).toString("hex")}`
+        : password;
+
     // Create new user
     const user = new AuthUser({
       username: finalUsername,
-      email: email || undefined,
+      email: normalizedEmail || undefined,
       phone: phone || undefined,
-      password,
+      password: finalPassword,
       role: normalizedRole,
     });
 
@@ -217,7 +385,64 @@ const register = async (req, res) => {
 // Login user
 const login = async (req, res) => {
   try {
-    const { username, password, phone: phoneRaw, identifier } = req.body;
+    const { username, password, phone: phoneRaw, identifier, role, email, otp } = req.body;
+    const normalizedRole = normalizeRole(role);
+    const normalizedEmail = normalizeEmail(email);
+
+    if (
+      normalizedRole === "giver" ||
+      (!!normalizedEmail && !!otp)
+    ) {
+      if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide a valid email address",
+        });
+      }
+      if (!otp) {
+        return res.status(400).json({
+          success: false,
+          message: "OTP is required for job giver login",
+        });
+      }
+
+      const user = await AuthUser.findOne({ email: normalizedEmail, role: "giver" });
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid credentials",
+        });
+      }
+
+      const otpCheck = await verifyAndConsumeOtp({
+        email: normalizedEmail,
+        purpose: "login",
+        otp,
+      });
+
+      if (!otpCheck.ok) {
+        return res.status(401).json({
+          success: false,
+          message: otpCheck.message,
+        });
+      }
+
+      const token = generateToken(user._id);
+      return res.status(200).json({
+        success: true,
+        message: "Login successful",
+        token,
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          profileCompleted: user.profileCompleted,
+          profileId: user.profileId,
+        },
+      });
+    }
 
     const phone = normalizePhone(phoneRaw || identifier);
     const usernameOrIdentifier = username || identifier;
@@ -648,6 +873,7 @@ const updateUserProfile = async (req, res) => {
 };
 
 module.exports = {
+  sendEmailOtp,
   register,
   login,
   checkPhone,

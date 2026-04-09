@@ -206,6 +206,39 @@ select.form-control {
   display: block;
 }
 
+.otp-send-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-send-otp {
+  height: 44px;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #2552fe;
+  background: #eff4ff;
+  color: #2552fe;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-send-otp:hover:not(:disabled) {
+  background: #dbe7ff;
+}
+
+.btn-send-otp:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.otp-info-message {
+  color: #2f855a;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .alert-danger {
   background-color: #fff5f5;
   color: #c53030;

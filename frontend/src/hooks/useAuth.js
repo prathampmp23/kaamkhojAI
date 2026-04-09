@@ -97,6 +97,35 @@ export const useAuth = () => {
     }
   };
 
+  // Send email OTP for giver signup/login
+  const sendEmailOtp = async ({ email, purpose }) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${server_url}/api/auth/send-email-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, purpose }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to send OTP");
+      }
+
+      setIsLoading(false);
+      return { success: true, message: data.message };
+    } catch (err) {
+      setError(err.message || "Failed to send OTP");
+      setIsLoading(false);
+      return { success: false, message: err.message };
+    }
+  };
+
   // Logout function
   const logout = () => {
     // Update context
@@ -158,6 +187,7 @@ export const useAuth = () => {
     error,
     login,
     register,
+    sendEmailOtp,
     logout,
     linkUserProfile,
     setError,
