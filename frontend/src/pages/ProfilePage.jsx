@@ -582,12 +582,12 @@ const ProfilePage = () => {
                   <span className="value">{profile.name || "-"}</span>
                 </div>
 
-                <div className="info-item">
+                {/* <div className="info-item">
                   <span className="label">{content[language].email}:</span>
                   <span className="value">
                     {currentUser?.email || "—"}
                   </span>
-                </div>
+                </div> */}
 
                 <div className="info-item">
                   <span className="label">{content[language].age}:</span>

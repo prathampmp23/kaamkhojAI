@@ -707,13 +707,13 @@
 
 .action-button.call-button {
   background: blue;
-  padding: 0px 20px !important;
+  padding: 0px 10px !important;
   color: white;
   font-size: 13px;
 }
 
 .action-button.call-button:hover {
-  background: blueviolet;
+  background: rgba(0, 0, 255, 0.628);
 }
 
 .feedback-provided-badge {

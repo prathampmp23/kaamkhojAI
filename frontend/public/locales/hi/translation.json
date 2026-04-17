@@ -15,7 +15,7 @@
     "listening": "मैं सुन रही हूँ...",
     "clickToTalk": "बात करने के लिए माइक पर क्लिक करें",
     "profileCreatedRedirecting": "प्रोफ़ाइल बन गई! आपको आगे ले जाया जा रहा है...",
-    "jobRecommendationIntro": "आपके लिए कुछ नौकरियाँ हैं। ",
+    "jobRecommendationIntro": "आपके लिए कुछ नौकरियां हैं। ",
     "jobDetails": "{{company}} में {{title}}, वेतन {{salary}}। ",
     "connectionError": "मुझे अभी अपने दिमाग से जुड़ने में परेशानी हो रही है। कृपया बाद में पुन: प्रयास करें।",
     "profileError": "आपकी प्रोफ़ाइल सहेजते समय या नौकरियाँ ढूँढ़ते समय कुछ गलत हो गया।",
@@ -213,5 +213,9 @@
             "electrician": "इलेक्ट्रीशियन",
             "other": "अन्य"
         }
+    },
+    "jobsPage": {
+        "exploreJobs": "नौकरियां एक्सप्लोर करें",
+        "verifiedOpportunities": "सत्यापित अवसर दैनिक रूप से अपडेट किए जाते हैं"
     }
 }

@@ -711,8 +711,6 @@ const DashboardPage = () => {
                           <span className={`status-pill status-${app.status}`}>{app.status}</span>
                         </div>
 
-                        <p className="applicant-email">{app.seeker?.email || ''}</p>
-
                         {app.seekerProfile && (
                           <div className="applicant-details">
                             <div className="detail-grid">

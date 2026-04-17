@@ -25,7 +25,7 @@ const PAGE_SIZE = 9;
 const LOCATION_TIMEOUT_MS = 2500;
 
 const JobsPage = () => {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser, isAuthenticated, jobViewMode, toggleJobViewMode } =
     useAuthContext();
@@ -524,17 +524,14 @@ const JobsPage = () => {
       <div className="jobs-page-root">
         <div className="jobs-max-width">
           <header className="jobs-hero">
-            <div className="hero-content">
-              <h1>
-                {mode === "public"
-                  ? "Explore Jobs"
-                  : mode === "recommended"
-                    ? "Jobs For You"
-                    : "Jobs Near You"}
-              </h1>
-              <p>Verified opportunities updated daily.</p>
+            <div className="jobs-hero-content">
+              <h1>{t("jobsPage.exploreJobs")}</h1>
+              <p>{t("jobsPage.verifiedOpportunities")}</p>
             </div>
-            {isAuthenticated && currentUser?.profileCompleted && (
+          </header>
+
+          <div className="jobs-container">
+            {isAuthenticated && (
               <div className="hero-controls">
                 <button className="control-btn" onClick={handleToggleMode}>
                   {jobViewMode === "recommended" ? (
@@ -555,86 +552,86 @@ const JobsPage = () => {
                 )}
               </div>
             )}
-          </header>
 
-          {mode === "recommended" && lastUpdated && (
-            <div className="update-toast">
-              <History size={14} /> Last refreshed:{" "}
-              {new Date(lastUpdated).toLocaleTimeString()}
-            </div>
-          )}
-
-          <main className="jobs-feed">
-            {loading && (
-              <div className="jobs-loading-screen">
-                <div className="spinner"></div>
-                <p>Loading...</p>
+            {mode === "recommended" && lastUpdated && (
+              <div className="update-toast">
+                <History size={14} /> Last refreshed:{" "}
+                {new Date(lastUpdated).toLocaleTimeString()}
               </div>
             )}
 
-            {!loading && error && (
-              <div className="jobs-inline-error">{error}</div>
-            )}
+            <main className="jobs-page-main">
+              {loading && (
+                <div className="jobs-loading-screen">
+                  <div className="spinner"></div>
+                  <p>Loading...</p>
+                </div>
+              )}
 
-            {mode === "recommended" ? (
-              <>
-                {recommendedJobs.length > 0 && (
-                  <section className="feed-section">
-                    <h2 className="section-title">
-                      <Star size={20} className="icon-star" /> Recommendations
-                    </h2>
-                    <div className="modern-grid">
-                      {recommendedJobs.map(renderJobCard)}
-                    </div>
-                  </section>
-                )}
-                {otherJobs.length > 0 && (
-                  <section className="feed-section alt-feed">
-                    <h2 className="section-title">Similar Roles</h2>
-                    <div className="modern-grid">
-                      {otherJobs.map(renderJobCard)}
-                    </div>
-                  </section>
-                )}
-                {!loading &&
-                  recommendedJobs.length === 0 &&
-                  otherJobs.length === 0 && (
-                    <div className="jobs-empty">
-                      No jobs found right now. Try refreshing in a moment.
-                    </div>
+              {!loading && error && (
+                <div className="jobs-inline-error">{error}</div>
+              )}
+
+              {mode === "recommended" ? (
+                <>
+                  {recommendedJobs.length > 0 && (
+                    <section className="feed-section">
+                      <h2 className="section-title">
+                        <Star size={20} className="icon-star" /> Recommendations
+                      </h2>
+                      <div className="modern-grid">
+                        {recommendedJobs.map(renderJobCard)}
+                      </div>
+                    </section>
                   )}
-              </>
-            ) : (
-              <>
-                <div className="modern-grid">{allJobs.map(renderJobCard)}</div>
-                {!loading && allJobs.length === 0 && (
-                  <div className="jobs-empty">No jobs available right now.</div>
-                )}
-              </>
-            )}
-          </main>
+                  {otherJobs.length > 0 && (
+                    <section className="feed-section alt-feed">
+                      <h2 className="section-title">Similar Roles</h2>
+                      <div className="modern-grid">
+                        {otherJobs.map(renderJobCard)}
+                      </div>
+                    </section>
+                  )}
+                  {!loading &&
+                    recommendedJobs.length === 0 &&
+                    otherJobs.length === 0 && (
+                      <div className="jobs-empty">
+                        No jobs found right now. Try refreshing in a moment.
+                      </div>
+                    )}
+                </>
+              ) : (
+                <>
+                  <div className="modern-grid">{allJobs.map(renderJobCard)}</div>
+                  {!loading && allJobs.length === 0 && (
+                    <div className="jobs-empty">No jobs available right now.</div>
+                  )}
+                </>
+              )}
+            </main>
 
-          {pages.length > 0 && (
-            <footer className="pagination-bar">
-              <button
-                className="pag-btn"
-                onClick={handlePrevPage}
-                disabled={pageIndex === 0}
-              >
-                <ChevronLeft size={20} /> Prev
-              </button>
-              <div className="pag-indicator">Page {pageIndex + 1}</div>
-              <button
-                className="pag-btn"
-                onClick={handleNextPage}
-                disabled={
-                  loadingMore || (!hasMore && pageIndex === pages.length - 1)
-                }
-              >
-                {loadingMore ? "..." : "Next"}
-              </button>
-            </footer>
-          )}
+            {pages.length > 0 && (
+              <footer className="pagination-bar">
+                <button
+                  className="pag-btn"
+                  onClick={handlePrevPage}
+                  disabled={pageIndex === 0}
+                >
+                  <ChevronLeft size={20} /> Prev
+                </button>
+                <div className="pag-indicator">Page {pageIndex + 1}</div>
+                <button
+                  className="pag-btn"
+                  onClick={handleNextPage}
+                  disabled={
+                    loadingMore || (!hasMore && pageIndex === pages.length - 1)
+                  }
+                >
+                  {loadingMore ? "..." : "Next"}
+                </button>
+              </footer>
+            )}
+          </div>
         </div>
       </div>
       <Footer />
