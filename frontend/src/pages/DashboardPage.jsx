@@ -4,6 +4,8 @@ import { useAuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import NavigationBar from '../components/NavigationBar';
 import Footer from '../components/Footer';
+import FeedbackSubmission from '../components/FeedbackSubmission';
+import RatingDisplay from '../components/RatingDisplay';
 import server from '../environment';
 import './DashboardPage.css';
 import { MapPin, IndianRupee } from 'lucide-react';
@@ -21,6 +23,18 @@ const DashboardPage = () => {
   const [myJobs, setMyJobs] = useState([]);
   const [selectedJobId, setSelectedJobId] = useState(null);
   const [selectedJobApplicants, setSelectedJobApplicants] = useState([]);
+
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState({});
+  const [ratingRefreshTrigger, setRatingRefreshTrigger] = useState(0);
+  const [seekerRating, setSeekerRating] = useState({ averageRating: 0, totalRatings: 0, ratings: [] });
+
+  const [feedbackModal, setFeedbackModal] = useState({
+    isOpen: false,
+    applicationId: null,
+    workerId: null,
+    jobId: null,
+    workerName: null,
+  });
 
   const [postJobForm, setPostJobForm] = useState({
     jobName: '',
@@ -129,7 +143,30 @@ const DashboardPage = () => {
           });
           const appsData = await appsRes.json();
           setMyApplications(appsRes.ok ? appsData.applications || [] : []);
+
+          // Fetch seeker's rating on initial load
+          if (currentUser?._id || currentUser?.id) {
+            try {
+              const userId = currentUser._id || currentUser.id;
+              console.log('[DashboardPage] Initial fetch - Getting rating for:', userId);
+              const ratingRes = await fetch(`${server_url}/api/feedback/rating/${userId}`);
+              console.log('[DashboardPage] Rating response status:', ratingRes.status);
+              
+              if (ratingRes.ok) {
+                const ratingData = await ratingRes.json();
+                console.log('[DashboardPage] Initial rating data:', ratingData);
+                setSeekerRating(ratingData);
+              } else {
+                console.log('[DashboardPage] Rating fetch failed, setting default');
+                setSeekerRating({ averageRating: 0, totalRatings: 0, ratings: [] });
+              }
+            } catch (e) {
+              console.error('[DashboardPage] Error fetching seeker rating:', e);
+              setSeekerRating({ averageRating: 0, totalRatings: 0, ratings: [] });
+            }
+          }
         }
+
 
         if (role === 'giver') {
           const jobsRes = await fetch(`${server_url}/api/jobs/mine`, {
@@ -150,6 +187,27 @@ const DashboardPage = () => {
 
     run();
   }, [isAuthenticated, currentUser, role, server_url]);
+
+  // Refetch seeker's rating when refresh trigger changes (feedback submitted)
+  useEffect(() => {
+    if (role !== 'seeker' || (!currentUser?._id && !currentUser?.id)) return;
+    
+    const userId = currentUser._id || currentUser.id;
+    const fetchRating = async () => {
+      try {
+        const res = await fetch(`${server_url}/api/feedback/rating/${userId}`);
+        if (res.ok) {
+          const data = await res.json();
+          console.log('[DashboardPage] Refreshed seeker rating:', data);
+          setSeekerRating(data);
+        }
+      } catch (e) {
+        console.error('[DashboardPage] Error refetching rating:', e);
+      }
+    };
+
+    fetchRating();
+  }, [ratingRefreshTrigger, currentUser?._id, currentUser?.id, role, server_url]);
 
   const handleLanguageChange = (lang) => {
     setLanguage(lang);
@@ -221,6 +279,20 @@ const DashboardPage = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to load applicants');
       setSelectedJobApplicants(data.applications || []);
+
+      // Check feedback for each application
+      const feedbackMap = {};
+      for (const app of data.applications || []) {
+        try {
+          const fbRes = await fetch(`${server_url}/api/feedback/application/${app._id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          feedbackMap[app._id] = fbRes.ok;
+        } catch (e) {
+          feedbackMap[app._id] = false;
+        }
+      }
+      setFeedbackSubmitted(feedbackMap);
     } catch (err) {
       console.error(err);
       alert(err.message || 'Failed to load applicants');
@@ -310,6 +382,43 @@ const DashboardPage = () => {
     }
   };
 
+  const openFeedbackModal = (applicationId, workerId, jobId, workerName) => {
+    setFeedbackModal({
+      isOpen: true,
+      applicationId,
+      workerId,
+      jobId,
+      workerName,
+    });
+  };
+
+  const closeFeedbackModal = () => {
+    setFeedbackModal({
+      isOpen: false,
+      applicationId: null,
+      workerId: null,
+      jobId: null,
+      workerName: null,
+    });
+  };
+
+  const handleFeedbackSubmitSuccess = () => {
+    closeFeedbackModal();
+    alert('Feedback submitted successfully!');
+    // Mark as feedback submitted and trigger refresh
+    setFeedbackSubmitted(prev => ({
+      ...prev,
+      [feedbackModal.applicationId]: true
+    }));
+    // Trigger RatingDisplay to refetch the rating
+    console.log('[DashboardPage] Triggering rating refresh...');
+    setRatingRefreshTrigger(prev => {
+      const newValue = prev + 1;
+      console.log(`[DashboardPage] Rating refresh trigger: ${prev} -> ${newValue}`);
+      return newValue;
+    });
+  };
+
   if (loading) {
     return (
       <div className="dashboard-page">
@@ -390,36 +499,99 @@ const DashboardPage = () => {
               <div className="card-header">
                 <h2>{content[language].jobApplications}</h2>
                 <span className="badge">{myApplications.length}</span>
+                <button 
+                  onClick={async () => {
+                    console.log('[DashboardPage] Manual refresh clicked');
+                    const userId = currentUser?._id || currentUser?.id;
+                    if (!userId) {
+                      alert('User ID not found');
+                      return;
+                    }
+                    try {
+                      const res = await fetch(`${server_url}/api/feedback/rating/${userId}`);
+                      if (res.ok) {
+                        const data = await res.json();
+                        console.log('[DashboardPage] Manual refresh - rating:', data);
+                        setSeekerRating(data);
+                        alert(`Rating updated! Average: ${data.averageRating}, Total: ${data.totalRatings}`);
+                      } else {
+                        alert('Failed to fetch rating');
+                      }
+                    } catch (e) {
+                      alert('Error: ' + e.message);
+                    }
+                  }}
+                  style={{
+                    marginLeft: 'auto',
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🔄 Refresh
+                </button>
               </div>
               <div className="card-body">
                 {myApplications.length > 0 ? (
                   <div className="jobs-grid" style={{ gridTemplateColumns: '1fr' }}>
-                    {myApplications.slice(0, 3).map((app) => (
-                      <div key={app._id} className="job-card">
-                        <h3>{app.job?.jobName || 'Job'}</h3>
-                        <p className="job-description">{app.job?.company || ''}</p>
-                        <div className="job-details">
-                          <p className="job-detail-item"><MapPin size={16} className="icon" /> {app.job?.location || ''}</p>
-                          <p className="job-detail-item"><IndianRupee size={16} className="icon" /> {app.job?.salary || ''}</p>
-                        </div>
-                        <p className="status-row">
-                          <span className={`status-pill status-${app.status}`}>{app.status}</span>
-                        </p>
-
-                        {app.status !== 'withdrawn' && app.status !== 'hired' && (
-                          <div className="row-actions">
-                            <button
-                              type="button"
-                              className="action-button danger small"
-                              onClick={() => unapplyFromJob(app.job?._id)}
-                              disabled={!app.job?._id}
-                            >
-                              Withdraw
-                            </button>
+                    {myApplications.slice(0, 3).map((app) => {
+                      const rating = seekerRating?.averageRating || 0;
+                      const totalRatings = seekerRating?.totalRatings || 0;
+                      
+                      return (
+                        <div key={app._id} className="job-card">
+                          <h3 style={{marginBottom: '8px'}}>{app.job?.jobName || 'Job'}</h3>
+                          {/* Rating Display */}
+                          <div style={{
+                            marginBottom: '12px',
+                            padding: '8px 0',
+                            borderBottom: '1px solid #f0f0f0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            minHeight: '24px'
+                          }}>
+                            <span style={{fontSize: '12px', color: '#6b7280', fontWeight: '500'}}>Your Rating:</span>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
+                              {[...Array(5)].map((_, i) => {
+                                const isFilled = i < Math.floor(rating);
+                                const isHalf = i === Math.floor(rating) && rating % 1 > 0;
+                                
+                                return (
+                                  <span key={i} style={{
+                                    color: isFilled || isHalf ? '#fbbf24' : '#d1d5db',
+                                    fontSize: '16px',
+                                    opacity: isHalf ? 0.6 : 1
+                                  }}>
+                                    {isFilled || isHalf ? '★' : '☆'}
+                                  </span>
+                                );
+                              })}
+                              <span style={{
+                                marginLeft: '6px',
+                                fontWeight: '600',
+                                color: '#111827',
+                                fontSize: '13px'
+                              }}>
+                                {parseFloat(rating).toFixed(1)}
+                              </span>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    ))}
+                          <p className="job-description">{app.job?.company || ''}</p>
+                          <div className="job-details">
+                            <p className="job-detail-item"><MapPin size={16} className="icon" /> {app.job?.location || ''}</p>
+                            <p className="job-detail-item"><IndianRupee size={16} className="icon" /> {app.job?.salary || ''}</p>
+                          </div>
+                          <p className="status-row">
+                            <span className={`status-pill status-${app.status}`}>{app.status}</span>
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <p>{content[language].noActivity}</p>
@@ -521,44 +693,111 @@ const DashboardPage = () => {
                 </div>
 
                 {selectedJobApplicants.length > 0 ? (
-                  <div className="jobs-grid single-column">
+                  <div className="applicants-container">
                     {selectedJobApplicants.map((app) => (
-                      <div key={app._id} className="job-card">
-                        <div className="row-between">
-                          <h3>{app.seeker?.username || 'Applicant'}</h3>
+                      <div key={app._id} className="applicant-card">
+                        {/* Header with status and rating */}
+                        <div className="applicant-header">
+                          <div className="applicant-title-section">
+                            <h3>{app.seeker?.username || 'Applicant'}</h3>
+                            {app.seeker?._id && (
+                              <RatingDisplay 
+                                userId={app.seeker._id} 
+                                minimal={true} 
+                                refreshTrigger={ratingRefreshTrigger} 
+                              />
+                            )}
+                          </div>
                           <span className={`status-pill status-${app.status}`}>{app.status}</span>
                         </div>
-                        <p className="job-description">{app.seeker?.email || ''}</p>
+
+                        <p className="applicant-email">{app.seeker?.email || ''}</p>
 
                         {app.seekerProfile && (
-                          <div className="job-details">
-                            <p>Name: {app.seekerProfile.name || '-'}</p>
-                            <p>Phone: {app.seekerProfile.phone || '-'}</p>
-                            <p>Job Type: {app.seekerProfile.job_title || '-'}</p>
-                            <p>Experience: {app.seekerProfile.experience ?? '-'}</p>
-                            <p>Salary Expectation: {app.seekerProfile.salary_expectation ?? '-'}</p>
-                            <p>Address: {app.seekerProfile.address || '-'}</p>
+                          <div className="applicant-details">
+                            <div className="detail-grid">
+                              <div className="detail-item">
+                                <span className="detail-label">Name:</span>
+                                <span className="detail-value">{app.seekerProfile.name || '-'}</span>
+                              </div>
+                              <div className="detail-item">
+                                <span className="detail-label">Job Type:</span>
+                                <span className="detail-value">{app.seekerProfile.job_title || '-'}</span>
+                              </div>
+                              <div className="detail-item">
+                                <span className="detail-label">Experience:</span>
+                                <span className="detail-value">{app.seekerProfile.experience ?? '-'}</span>
+                              </div>
+                              <div className="detail-item">
+                                <span className="detail-label">Salary Expect:</span>
+                                <span className="detail-value">₹{app.seekerProfile.salary_expectation ?? '-'}</span>
+                              </div>
+                              <div className="detail-item">
+                                <span className="detail-label">Address:</span>
+                                <span className="detail-value">{app.seekerProfile.address || '-'}</span>
+                              </div>
+                              <div className="detail-item">
+                                <span className="detail-label">Shift:</span>
+                                <span className="detail-value">{app.seekerProfile.shift_time || '-'}</span>
+                              </div>
+                            </div>
                           </div>
                         )}
 
-                        {app.status !== 'withdrawn' && (
-                          <div className="row-actions">
+                        {/* Action buttons */}
+                        <div className="applicant-actions">
+                          {/* Call button - always show for accepted/shortlisted/hired */}
+                          {(app.status === 'shortlisted' || app.status === 'hired') && app.seekerProfile?.phone && (
+                            <a href={`tel:${app.seekerProfile.phone}`} className="action-button call-button">
+                              Call
+                            </a>
+                          )}
+
+                          {/* Accept/Reject buttons - only if not yet accepted or feedback given */}
+                          {app.status === 'applied' && !feedbackSubmitted[app._id] && (
+                            <>
+                              <button
+                                type="button"
+                                className="action-button primary small"
+                                onClick={() => setApplicantStatus(app._id, 'shortlisted')}
+                              >
+                                Accept
+                              </button>
+                              <button
+                                type="button"
+                                className="action-button danger small"
+                                onClick={() => setApplicantStatus(app._id, 'rejected')}
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+
+                          {/* Feedback button - only if accepted and no feedback yet */}
+                          {(app.status === 'hired' || app.status === 'shortlisted') && !feedbackSubmitted[app._id] && app.seekerProfile && (
                             <button
                               type="button"
-                              className="action-button primary small"
-                              onClick={() => setApplicantStatus(app._id, 'shortlisted')}
+                              className="action-button secondary small"
+                              onClick={() =>
+                                openFeedbackModal(
+                                  app._id,
+                                  app.seeker._id,
+                                  app.job._id,
+                                  app.seeker.username
+                                )
+                              }
                             >
-                              Accept
+                              Provide Feedback
                             </button>
-                            <button
-                              type="button"
-                              className="action-button danger small"
-                              onClick={() => setApplicantStatus(app._id, 'rejected')}
-                            >
-                              Reject
-                            </button>
-                          </div>
-                        )}
+                          )}
+
+                          {/* Feedback provided message */}
+                          {feedbackSubmitted[app._id] && (
+                            <div className="feedback-provided-badge">
+                              ✓ Feedback Provided
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -570,6 +809,17 @@ const DashboardPage = () => {
           </div>
         )}
       </div>
+
+      {feedbackModal.isOpen && (
+        <FeedbackSubmission
+          applicationId={feedbackModal.applicationId}
+          workerId={feedbackModal.workerId}
+          jobId={feedbackModal.jobId}
+          workerName={feedbackModal.workerName}
+          onSubmitSuccess={handleFeedbackSubmitSuccess}
+          onCancel={closeFeedbackModal}
+        />
+      )}
 
       <Footer language={language} />
     </div>

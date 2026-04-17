@@ -168,7 +168,8 @@ const listApplicantsForJob = async (req, res) => {
     const applications = await Application.find({ job: job._id })
       .sort({ createdAt: -1 })
       .populate('seeker', 'username email role profileCompleted profileId')
-      .populate('seekerProfile');
+      .populate('seekerProfile')
+      .populate('job', 'jobName company');
 
     return res.status(200).json({ success: true, applications });
   } catch (error) {

@@ -5,6 +5,7 @@ import { useAuthContext } from "../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
 import NavigationBar from "../components/NavigationBar";
 import Footer from "../components/Footer";
+import RatingDisplay from "../components/RatingDisplay";
 import axios from "axios";
 import "./ProfilePage.css";
 
@@ -643,6 +644,14 @@ const ProfilePage = () => {
                 </div>
               </div>
             </div>
+
+            {/* Rating/Feedback Section */}
+            {currentUser?._id && (
+              <div className="profile-section rating-section">
+                <h2>Worker Ratings & Reviews</h2>
+                <RatingDisplay userId={currentUser._id} />
+              </div>
+            )}
 
             <div className="profile-actions">
               <button

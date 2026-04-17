@@ -56,6 +56,25 @@ const userSchema = new mongoose.Schema({
     default: null
   },
   
+  // ========== RATING & FEEDBACK FIELDS ==========
+  averageRating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+  
+  totalRatings: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  
+  ratings: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Feedback'
+  }],
+  
   createdAt: {
     type: Date,
     default: Date.now,
@@ -77,6 +96,28 @@ userSchema.methods.generateProfileHash = function() {
 userSchema.methods.hasProfileChanged = function() {
   const currentHash = this.generateProfileHash();
   return this.profileHash !== currentHash;
+};
+
+userSchema.methods.updateAverageRating = async function() {
+  try {
+    // Get all feedbacks for this user from the database
+    const Feedback = require('./feedback');
+    const feedbacks = await Feedback.find({ ratedUser: this._id });
+    
+    if (feedbacks && feedbacks.length > 0) {
+      const totalRating = feedbacks.reduce((sum, f) => sum + (f.rating || 0), 0);
+      this.averageRating = parseFloat((totalRating / feedbacks.length).toFixed(2));
+      this.totalRatings = feedbacks.length;
+      this.ratings = feedbacks.map(f => f._id);
+      console.log(`[User Model] Updated average rating for ${this._id}: ${this.averageRating} (${this.totalRatings} ratings)`);
+    } else {
+      this.averageRating = 0;
+      this.totalRatings = 0;
+      this.ratings = [];
+    }
+  } catch (error) {
+    console.error('Error updating average rating:', error);
+  }
 };
 
 module.exports = mongoose.model("User", userSchema);

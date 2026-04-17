@@ -8,6 +8,7 @@ const jobRoutes = require("./routes/jobRoutes");
 const voiceRoutes = require("./routes/voiceRoutes");
 const translateRoutes = require("./routes/translateRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
+const feedbackRoutes = require("./routes/feedbackRoutes");
 const path = require("path");
 
 const app = express();
@@ -68,6 +69,7 @@ app.use("/api/voice", voiceRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/translate", translateRoutes);
 app.use("/api/applications", applicationRoutes);
+app.use("/api/feedback", feedbackRoutes);
 
 // --- Health check route (optional but useful on Render) ---
 app.get("/", (req, res) => {
