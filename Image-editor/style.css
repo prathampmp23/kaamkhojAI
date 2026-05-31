@@ -1,0 +1,230 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    background-color: var(--bg-primary-color);
+    color: var(--primary-color);
+    width: 100%;
+    height: 100%;
+    font-family: system-ui, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+main {
+    height: 100%;
+    width: 100%;
+}
+
+/* navbar start */
+
+.navbar {
+    background-color: var(--bg-secondary-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--padding-m) var(--padding-xxl);
+    font-size: var(--primary-font-size);
+}
+
+.left {
+    font-size: 23px;
+    font-weight: bold;
+}
+
+
+.right {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--gutter-s);
+}
+
+.right label {
+    padding: var(--padding-s) var(--padding-l);
+    background-color: var(--bg-blue-color);
+    border-radius: var(--border-radius-s);
+    border: none;
+    outline: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--gutter-s);
+}
+
+.btn {
+    padding: var(--padding-s) var(--padding-l);
+    border-radius: var(--border-radius-s);
+    border: none;
+    outline: none;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--gutter-s);
+}
+
+#reset-button {
+    background-color: var(--bg-danger-color);
+    font-size: var(--primary-font-size);
+}
+
+#reset-button i,
+#download-button i,
+.right label i {
+    font-size: 1.2rem;
+}
+
+#download-button {
+    background-color: var(--bg-green-color);
+    font-size: var(--primary-font-size);
+}
+
+/* navbar end */
+
+/* preview css start */
+.main-body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.preview {
+    width: 70%;
+    /* background-color: red; */
+    height: 90vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    font-size: var(--secondary-font-size);
+}
+
+.preview i {
+    font-size: var(--preview-icon-font-size);
+}
+
+
+/* preview css end */
+
+
+/* filters container */
+
+.filters-container {
+    height: 92vh;
+    width: 30%;
+    background-color: var(--bg-secondary-color);
+    padding: 0 var(--padding-m);
+}
+
+.filters-container h3 {
+    margin-top: var(--margin-m);
+}
+
+.filters-container hr {
+    opacity: 0.3;
+    margin-top: var(--margin-s);
+}
+
+.filter {
+    margin-top: var(--margin-m);
+}
+
+.filter input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 8px;
+    width: 100%;
+    border-radius: var(--border-radius-s);
+    background-color: var(--bg-danger-color);
+}
+
+.filter input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    background: white;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+canvas {
+    display: none;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.presets {
+    margin-top: var(--margin-m);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--gutter-s);
+}
+
+.presets .btn {
+    color: var(--secondary-color);
+    font-size: var(--primary-font-size);
+}
+
+
+
+@media (max-width:700px) {
+    .navbar {
+        flex-direction: column;
+        gap: var(--gutter-s);
+        align-items: flex-start;
+        padding: var(--padding-s) var(--padding-l);
+        font-size: var(--small-font-size);
+    }
+
+    .left {
+        font-size: 14px;
+    }
+
+    .right label {
+        padding: var(--padding-xs) var(--padding-s);
+    }
+
+    .btn {
+        padding: var(--padding-xs) var(--padding-s);
+        gap: var(--gutter-s);
+    }
+
+    #reset-button {
+        font-size: var(--small-font-size);
+    }
+
+    #reset-button i,
+    #download-button i,
+    .right label i {
+        font-size: 17px;
+    }
+
+    #download-button {
+        font-size: var(--small-font-size);
+    }
+
+    .main-body {
+        flex-direction: column;
+    }
+
+    .preview {
+        width: 100%;
+        height: 60vh;
+    }
+
+    .preview i {
+        font-size: var(--preview-icon-small-font-size);
+    }
+
+
+    .filters-container {
+        height: 100%;
+        width: 100%;
+        padding: var(--padding-l) var(--padding-xl);
+        margin-bottom: var(--margin-s);
+    }
+}
