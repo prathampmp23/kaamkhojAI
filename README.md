@@ -383,4 +383,4 @@ For questions or support, please open an issue on GitHub or contact the developm
 
 ---
 
-**Made with ❤️ for India's workforce**
+**Made with ❤️ for Maharashtra Workforce**
